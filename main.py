@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.ndimage.filters as fi
 import math
-import spglib
 import keras
 import sys
 import decimal
