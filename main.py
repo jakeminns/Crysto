@@ -8,6 +8,8 @@ import decimal
 sys.path.append(r'/home/jake/Documents/Programming/Github/Python/')
 from SliceOPy import NetSlice, DataSlice
 import keras.backend as K
+
+
 def buildAndApplySymmetryOpperations(positions, symmetryOpp):
     NewPositions=[]
     for sym in range(len(symmetryOpp)):
@@ -243,26 +245,40 @@ def buildDensity2D(xSize,ySize,sgInfo,atomSize,sig):
 
 
 def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
-
+    #Select random spacegroup
     sg = np.random.randint(low=80,high=100)
 
+    #Initilise postion table
     positionTable = []
 
+    #for a random amount of atom assign a random position
     for atom in range(0,np.random.randint(1,2)):
         positionTable.append(["0",str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0])])
+
+    #build a list of symmetry operators and centering operations
     sym = sgInfo[sg][1:][0]
     cen = sgInfo[sg][2:][0]
 
-    positionTable = applyMultiPos(positionTable)
+    #positionTable = applyMultiPos(positionTable)
+    #Apply symmetry operations
     positionTable = (buildAndApplySymmetryOpperations(positionTable,sym))
+    #Apply centering operations
     positionTable = (buildAndApplySymmetryOpperations(positionTable,cen))
 
+    #Generate empty density
     density = np.zeros((xSize,ySize,zSize))
+    #Calculate modulus of x,y,z corodinates
     positionTable = np.array(positionTable,dtype=np.dtype(float))[:,[1,2,3]] %1
+    #Round results for removal of duplicates
+    print("a",positionTable.shape)
     positionTable = np.around(positionTable,decimals=6)
-    #positionTable = Remove(positionTable)
+    #Remove duplicates
     positionTable = np.unique(positionTable,axis=0)
+    print("b",positionTable.shape)
+    #Add padding to account for adding atoms to boundary of box
     density = np.pad(density, atomSize, 'constant', constant_values=-1)
+
+
     for i in range(0,len(positionTable)):
         x = float(positionTable[i][0])
         y = float(positionTable[i][1])
@@ -293,21 +309,35 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
         density[xmin:xmax,ymin:ymax,zmin:zmax] = density[xmin:xmax,ymin:ymax,zmin:zmax]  + atom
     density = density[atomSize:-atomSize,atomSize:-atomSize,atomSize:-atomSize]
     density = np.array(density)
-    out= np.fft.fftn(density).real
-    """
-    c1 = ff[0:20,0:20]
-    c2 = ff[0:20,80:]
-    c3 = ff[80:,0:20]
-    c4 = ff[80:,80:]
+    ff= np.fft.fftn(density).real
+    
+
+    size_ = 15
+    len_ = ff.shape[0]-size_
+
+    c8 = ff[0:size_,0:size_,0:size_]
+    c4 = ff[0:size_,0:size_,len_:]
+    c7 = ff[0:size_,len_:,0:size_]
+    c3 = ff[0:size_,len_:,len_:]
+    c1 = ff[len_:,len_:,len_:]
+    c2 = ff[len_:,0:size_,len_:]
+    c5 = ff[len_:,len_:,0:size_]
+    c6 = ff[len_:,0:size_,0:size_]
 
     out1 = np.concatenate((c1,c2),axis=1)
     out2 = np.concatenate((c3,c4),axis=1)
-    out = np.concatenate((out1,out2),axis=0)
-    """
+    out_bottom = np.concatenate((out1,out2),axis=0)
+
+    out1 = np.concatenate((c5,c6),axis=1)
+    out2 = np.concatenate((c7,c8),axis=1)
+    out_top= np.concatenate((out1,out2),axis=0)
+    
+    out= np.concatenate((out_bottom,out_top),axis=2)
+
     out = out-  np.amin(out)
     out = out/np.amax(out)
-
-    return np.fft.fftn(out).real,np.array([sg-80])
+    print("Shape",out.shape)
+    return density,np.array([sg-80])
 
 def buildModelConv(input_shape,num_classes):
     
@@ -371,13 +401,14 @@ def writeGRD(fdat,data):
 
 sgInfo = readSGLib()
 """
-dd,sg = buildDensity3D(25,25,25,sgInfo,4,1)
-writeGRD([25,25,25],dd)
+dd,sg = buildDensity3D(60,60,60,sgInfo,3,1)
+writeGRD(dd.shape,dd)
+
 """
-model = buildModelConv((25,25,25),1)
+model = buildModelConv((30,30,30),1)
 model = NetSlice(model,'keras', None)
 #model.loadModel('20_sg_dense',customObject=None)
 model.compileModel(keras.optimizers.Adam(), 'categorical_crossentropy', ['accuracy'])
 #model.generativeDataTrain(buildDensity, BatchSize=200, Epochs=10,Channel_Ordering=(36,36,1,1),Info=sgInfo)
-model.generativeDataTrain(buildDensity3D, BatchSize=50, Epochs=100,Channel_Ordering=(25,25,25,25),Info=sgInfo)
+model.generativeDataTrain(buildDensity3D, BatchSize=1, Epochs=100,Channel_Ordering_Feat=(30,30,30),funcParams=[30,30,30,sgInfo,3,1])
 model.saveModel("3d_20_sg_dense")
