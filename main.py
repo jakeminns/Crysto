@@ -176,7 +176,7 @@ def Remove(duplicate):
             final_list.append(num) 
     return final_list 
 
-def buildDensity2D(xSize,ySize,sgInfo):
+def buildDensity2D(xSize,ySize,sgInfo,atomSize,sig):
 
     sg = np.random.randint(low=80,high=100)
 
@@ -197,9 +197,6 @@ def buildDensity2D(xSize,ySize,sgInfo):
     positionTable = np.around(positionTable,decimals=6)
     #positionTable = Remove(positionTable)
     positionTable = np.unique(positionTable,axis=0)
-
-    atomSize = 20
-    sig = 3
 
     density = np.pad(density, atomSize, 'constant', constant_values=-1)
 
@@ -246,7 +243,7 @@ def buildDensity2D(xSize,ySize,sgInfo):
     return density,np.array([sg-80])
 
 
-def buildDensity3D(xSize,ySize,zSize,sgInfo):
+def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
 
     sg = np.random.randint(low=80,high=100)
 
@@ -254,7 +251,6 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo):
 
     for atom in range(0,np.random.randint(1,2)):
         positionTable.append(["0",str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0])])
-
     sym = sgInfo[sg][1:][0]
     cen = sgInfo[sg][2:][0]
 
@@ -267,12 +263,7 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo):
     positionTable = np.around(positionTable,decimals=6)
     #positionTable = Remove(positionTable)
     positionTable = np.unique(positionTable,axis=0)
-
-    atomSize = 20
-    sig = 3
-
     density = np.pad(density, atomSize, 'constant', constant_values=-1)
-
     for i in range(0,len(positionTable)):
         x = float(positionTable[i][0])
         y = float(positionTable[i][1])
@@ -301,11 +292,10 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo):
 
 
         density[xmin:xmax,ymin:ymax,zmin:zmax] = density[xmin:xmax,ymin:ymax,zmin:zmax]  + atom
-
     density = density[atomSize:-atomSize,atomSize:-atomSize,atomSize:-atomSize]
     density = np.array(density)
-    ff = np.fft.fftn(density).real
-
+    out= np.fft.fftn(density).real
+    """
     c1 = ff[0:20,0:20]
     c2 = ff[0:20,80:]
     c3 = ff[80:,0:20]
@@ -314,11 +304,11 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo):
     out1 = np.concatenate((c1,c2),axis=1)
     out2 = np.concatenate((c3,c4),axis=1)
     out = np.concatenate((out1,out2),axis=0)
-
+    """
     out = out-  np.amin(out)
     out = out/np.amax(out)
 
-    return density,np.array([sg-80])
+    return np.fft.fftn(out).real,np.array([sg-80])
 
 def buildModelConv(input_shape,num_classes):
     
@@ -332,6 +322,7 @@ def buildModelConv(input_shape,num_classes):
     model.add(keras.layers.Conv2D(364, (2, 2),padding="same",data_format= keras.backend.image_data_format()))
     model.add(keras.layers.Activation('relu'))
     model.add(keras.layers.BatchNormalization())
+    model.add(keras.layers.MaxPooling2D(pool_size=(2, 2),data_format= keras.backend.image_data_format()))
 
 ##    
 #    model.add(keras.layers.Conv2D(64, (2, 2),data_format= K.image_data_format()))
@@ -353,7 +344,7 @@ def buildModelDense(input_shape,num_classes):
     model = keras.Sequential()
     model.add(keras.layers.Flatten())  # this converts our 3D feature maps to 1D feature vectors
 
-    model.add(keras.layers.Dense(12096,input_dim=1296,activation='sigmoid'))
+    model.add(keras.layers.Dense(12096,input_dim=15625,activation='sigmoid'))
  #   model.add(keras.layers.Dense(600,activation='sigmoid'))
     model.add(keras.layers.Dense(20,activation='softmax'))
 
@@ -365,7 +356,7 @@ def writeGRD(fdat,data):
     out = open("out.grd","w")
     out.write("Title: Put your title \n")                                                         
     out.write(" 5.82930  5.82930  5.82930  90.0000  90.0000  90.0000\n")
-    out.write("   96    96   96 \n")
+    out.write("   "+str(fdat[0])+"    "+str(fdat[1])+"   "+str(fdat[2])+" \n")
 
 
     for x in range(0,(fdat[0])):
@@ -380,21 +371,14 @@ def writeGRD(fdat,data):
 
 
 sgInfo = readSGLib()
-
 """
-ff,dd,sg = buildDensity(96,96,96,sgInfo)
-writeGRD([96,96,96],dd)
-
-print("SG:",sg)
-print("data:",dd.shape)
-plotDensity(dd)
-plotDensity(ff)
+dd,sg = buildDensity3D(25,25,25,sgInfo,4,1)
+writeGRD([25,25,25],dd)
 """
-model = buildModelDense((96,96,1),1)
-
+model = buildModelConv((25,25,25),1)
 model = NetSlice(model,'keras', None)
 #model.loadModel('20_sg_dense',customObject=None)
 model.compileModel(keras.optimizers.Adam(), 'categorical_crossentropy', ['accuracy'])
 #model.generativeDataTrain(buildDensity, BatchSize=200, Epochs=10,Channel_Ordering=(36,36,1,1),Info=sgInfo)
-model.generativeDataTrain(buildDensity2D, BatchSize=1, Epochs=100,Channel_Ordering=(96,96,1,1),Info=sgInfo)
-model.saveModel("20_sg_dense")
+model.generativeDataTrain(buildDensity3D, BatchSize=50, Epochs=100,Channel_Ordering=(25,25,25,25),Info=sgInfo)
+model.saveModel("3d_20_sg_dense")
