@@ -5,10 +5,10 @@ import math
 import keras
 import sys
 import decimal
-sys.path.append(r'/home/minns_jake/downloads/')
+sys.path.append(r'/home/jake/Documents/Programming/Github/Python/')
 from SliceOPy import NetSlice, DataSlice
 import keras.backend as K
-
+import tensorflow as tf
 
 def buildAndApplySymmetryOpperations(positions, symmetryOpp):
     NewPositions=[]
@@ -28,6 +28,7 @@ def removeBrackets(input):
     input = str(input).replace(")","")
     
     return input
+
 def applyOpperation(position, symmetryOpp):
     a = symmetryOpp.replace("x",str(removeBrackets(position[1])))
     a = a.replace("y",str(removeBrackets(position[2])))
@@ -35,9 +36,8 @@ def applyOpperation(position, symmetryOpp):
     return round(eval(a),3)
 
 def readSGLib():
-    file_ = open("syminfo.txt","r") #read file
+    file_ = open("/home/jake/Documents/Programming/Github/Python/Crysto/syminfo.txt","r") #read file
     lines = file_.read().split('\n') #split file into lines 
-    print(len(lines))
     lines = list(filter(None, lines)) # fastest
     index = []
     sgData =[]
@@ -59,52 +59,11 @@ def readSGLib():
                 item.append(cen)
                 sgData.append(item) 
                 index.append(item[0])
-   
-
 
     return sgData
         
-
-def readSGInfo():
-    file_ = open("spgra.dat","r") #read file
-    lines = file_.read().split('\n') #split file into lines
-    info = [] #info list init
-    item = [] #item list init
-    prev = False #blank prev variable to track if the first item in the previous line was a number 
-    for line in lines: #loop lines
-        if len(line) > 0: #check line isn't blank
-            if is_number(line.split()[0]): #check if the first item in the line is a number
-                if prev == False: #if the previous line was NOT a number we know this is the start of a new space group item so append the previous item to the info and initiize a new blank list 
-                    info.append(item)
-                    item = []
-
-                prev = True #this line start with a number
-            else:
-                prev = False #if the line doesn't start with a number set this to false
-            if item == []: #if the item is blank we know that line is the line containing the spacegroup number, we want to keep that
-                item.append(line.split()[0])
-
-            elif is_number(line.split()[0]) ==False: #if the first item in the line is not a number we know it is a symmetry operator so add that
-                item.append(line.split(','))
-
-    info = info[1:] #delete first blank item in info
-
-    ##################################LIST CONTAINS DUPLICATES FOR NOW WE WILL JUST DELETE THEM#####################################
-
-    newInfo = []
-    addList = []
-
-    for i in info:
-        if i[0] not in addList:
-            addList.append(i[0])
-            newInfo.append(i)
-
-
-
-
-    return newInfo
-
 def gkern2D(kernlen=21, nsig=3):
+
     """Returns a 2D Gaussian kernel array."""
     # create nxn zeros
     inp = np.zeros((kernlen, kernlen))
@@ -115,6 +74,7 @@ def gkern2D(kernlen=21, nsig=3):
     max1 = np.amax(guass)
     gauss = guass/max1
     return gauss
+
 def gkern3D(kernlen=21, nsig=3):
     """Returns a 2D Gaussian kernel array."""
     # create nxn zeros
@@ -127,29 +87,29 @@ def gkern3D(kernlen=21, nsig=3):
     gauss = guass/max1
     return gauss
 
-def genDensity():
-    return np.random.rand(96,96)
-
-
 def plotDensity(density):
     plt.imshow(density)
     plt.show()
 
-def convertSF(density):
-    return np.fft.fftn(density)
+def writeGRD(fdat,data,name):
 
-def is_number(a):
-    # will be True also for 'NaN'
-    try:
-        number = float(a)
-        return True
-    except ValueError:
-        return False
+    out = open(name+".grd","w")
+    out.write("Title: Put your title \n")                                                         
+    out.write(" 5.82930  5.82930  5.82930  90.0000  90.0000  90.0000\n")
+    out.write("   "+str(fdat[0])+"    "+str(fdat[1])+"   "+str(fdat[2])+" \n")
+
+
+    for x in range(0,(fdat[0])):
+        for y in range(0,(fdat[1])):
+            for z in range(0,(fdat[2])):
+                out.write('%.6E' % decimal.Decimal(data[x][y][z]) + "   ")
+                if z%6 == 0:
+                    out.write("\n")
+            out.write("\n")
 
 def calculateSymOp(num,var,op):
     op = op.replace(var,num)
     return eval(op)
-
 
 def applyMultiPos(positionTable):
 
@@ -170,13 +130,6 @@ def applyMultiPos(positionTable):
 
     return newPos  
 
-def Remove(duplicate): 
-    final_list = [] 
-    for num in duplicate: 
-        if num not in final_list: 
-            final_list.append(num) 
-    return final_list 
-
 def buildDensity2D(xSize,ySize,sgInfo,atomSize,sig):
 
     sg = np.random.randint(low=80,high=100)
@@ -196,7 +149,6 @@ def buildDensity2D(xSize,ySize,sgInfo,atomSize,sig):
     density = np.zeros((xSize,ySize))
     positionTable = np.array(positionTable,dtype=np.dtype(float))[:,[1,2]] %1
     positionTable = np.around(positionTable,decimals=6)
-    #positionTable = Remove(positionTable)
     positionTable = np.unique(positionTable,axis=0)
 
     density = np.pad(density, atomSize, 'constant', constant_values=-1)
@@ -243,10 +195,9 @@ def buildDensity2D(xSize,ySize,sgInfo,atomSize,sig):
 
     return density,np.array([sg-80])
 
-
 def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     #Select random spacegroup
-    sg = np.random.randint(low=0,high=230)
+    sg = np.random.randint(low=80,high=100)
 
     #Initilise postion table
     positionTable = []
@@ -273,7 +224,6 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     positionTable = np.around(positionTable,decimals=6)
     #Remove duplicates
     positionTable = np.unique(positionTable,axis=0)
-    
     #Add padding to account for adding atoms to boundary of box
     density = np.pad(density, atomSize, 'constant', constant_values=-1)
 
@@ -333,38 +283,56 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     
     out= np.concatenate((out_bottom,out_top),axis=2)
 
-    #out = out-  np.amin(out)
-    #out = out/np.amax(out)
-    
-    return out,np.array([sg])
+    out = out-  np.amin(out)
+    out = out/np.amax(out)
+
+    return out,sg-80
+
+def genrateTrainingData(num,funcParams):
+
+    dataFeat = []
+    dataLabel = []
+    for i in range(0,num):
+        item = buildDensity3D(*funcParams)
+        dataFeat.append(item[0])
+        dataLabel.append(item[1])
+
+    dataFeat = np.array(dataFeat)
+    dataLabel = np.array(dataLabel)
+
+    np.save("feat.npy",dataFeat)
+    np.save("label.npy",dataLabel)
+
 
 def buildModelConv(input_shape,num_classes):
     
     model = keras.Sequential()
-    model.add(keras.layers.Conv2D(678, (3, 3), input_shape=input_shape,padding="same",data_format= keras.backend.image_data_format()))
+    model.add(keras.layers.Conv2D(124, (3, 3), input_shape=input_shape,padding="same",data_format= keras.backend.image_data_format()))
     model.add(keras.layers.Activation('relu'))
     model.add(keras.layers.BatchNormalization())
-
-    model.add(keras.layers.MaxPooling2D(pool_size=(2, 2),data_format= keras.backend.image_data_format()))
+    #model.add(keras.layers.MaxPooling2D(pool_size=(2, 2),data_format= keras.backend.image_data_format()))
 #    
-    model.add(keras.layers.Conv2D(678, (3, 3),padding="same",data_format= keras.backend.image_data_format()))
+    model.add(keras.layers.Conv2D(124, (3, 3),padding="same",data_format= keras.backend.image_data_format()))
     model.add(keras.layers.Activation('relu'))
     model.add(keras.layers.BatchNormalization())
     model.add(keras.layers.MaxPooling2D(pool_size=(2, 2),data_format= keras.backend.image_data_format()))
 
 ##    
-    model.add(keras.layers.Conv2D(678, (3, 3),data_format= K.image_data_format()))
+    model.add(keras.layers.Conv2D(124, (3, 3),data_format= K.image_data_format()))
     model.add(keras.layers.Activation('relu'))
-    model.add(keras.layers.MaxPooling2D(pool_size=(2, 2),data_format= K.image_data_format()))
     model.add(keras.layers.BatchNormalization())
+    model.add(keras.layers.MaxPooling2D(pool_size=(2, 2),data_format= K.image_data_format()))
+    
     model.add(keras.layers.Flatten())  # this converts our 3D feature maps to 1D feature vectors
+    
     #model.add(keras.layers.Dense(600))
     #model.add(keras.layers.Activation('sigmoid'))
-    #model.add(keras.layers.Dense(400))
-    #model.add(keras.layers.Activation('sigmoid'))
-    #model.add(keras.layers.BatchNormalization())
-    model.add(keras.layers.Dense(230,activation="sigmoid"))
+    model.add(keras.layers.Dense(1400))
+    model.add(keras.layers.Activation('relu'))
+    model.add(keras.layers.BatchNormalization())
+    model.add(keras.layers.Dense(230))
     model.add(keras.layers.Activation('softmax'))
+
     return model
 
 def buildModelDense(input_shape,num_classes):
@@ -372,44 +340,42 @@ def buildModelDense(input_shape,num_classes):
     model = keras.Sequential()
     model.add(keras.layers.Flatten())  # this converts our 3D feature maps to 1D feature vectors
 
-    model.add(keras.layers.Dense(30000,input_dim=27000,activation='sigmoid'))
-    model.add(keras.layers.Dense(3000,activation='sigmoid'))
-    model.add(keras.layers.Dense(230,activation='sigmoid'))
+    model.add(keras.layers.Dense(12096,input_dim=15625,activation='sigmoid'))
+ #   model.add(keras.layers.Dense(600,activation='sigmoid'))
+    model.add(keras.layers.Dense(20,activation='softmax'))
 
-    model.add(keras.layers.Activation("softmax"))   
+    
     return model
-
-def writeGRD(fdat,data):
-
-    out = open("out.grd","w")
-    out.write("Title: Put your title \n")                                                         
-    out.write(" 5.82930  5.82930  5.82930  90.0000  90.0000  90.0000\n")
-    out.write("   "+str(fdat[0])+"    "+str(fdat[1])+"   "+str(fdat[2])+" \n")
-
-
-    for x in range(0,(fdat[0])):
-        for y in range(0,(fdat[1])):
-            for z in range(0,(fdat[2])):
-                out.write('%.6E' % decimal.Decimal(data[x][y][z]) + "   ")
-                if z%6 == 0:
-                    out.write("\n")
-            out.write("\n")
 
 
 
 
 sgInfo = readSGLib()
 """
-dd,sg = buildDensity3D(60,60,60,sgInfo,3,1)
-writeGRD(dd.shape,dd)
+for i in range(100):
 
-"""
+    ff,sg = buildDensity3D(60,60,60,sgInfo,3,1)
+#writeGRD(dd.shape,dd,"density")
+#writeGRD(ff.shape,ff,"reciprocal")
+
+""" 
+
+#genrateTrainingData(100,[30,30,30,sgInfo,4,1])
+feat = np.load("feat.npy")
+label = np.load("label.npy")
+print(feat.shape,label.shape)
+
 model = buildModelConv((30,30,30),1)
-model = NetSlice(model,'keras', None)
-#model.loadModel('3d_230_sg_dense',customObject=None)
-print(model.summary())
-model.compileModel(keras.optimizers.Adam(lr=0.01), 'categorical_crossentropy', ['accuracy'])
+data = DataSlice(Features=feat,Labels=label,Channel_Features=None,Split_Ratio=0.8)
+data.channelOrderingFormatFeatures(30,30,30)
+data.oneHot(230)
+model = NetSlice(model,'keras', data)
+#model.loadModel('20_sg_dense',customObject=None)
+model.compileModel(tf.train.AdamOptimizer(), 'categorical_crossentropy', ['accuracy'])
+model.trainModel(Epochs=100,Batch_size=1,Verbose=2)
 #model.generativeDataTrain(buildDensity, BatchSize=200, Epochs=10,Channel_Ordering=(36,36,1,1),Info=sgInfo)
-model.generativeDataTrain(buildDensity3D, BatchSize=500, Epochs=100,Channel_Ordering_Feat=(30,30,30),funcParams=[30,30,30,sgInfo,4,1])
-model.saveModel("3d_230_sg_dense_2")
-#model.generativeDataTesting(buildDensity3D,SampleNumber=1,Channel_Ordering=(30,30,30),funcParams=[30,30,30,sgInfo,4,1])
+#model.generativeDataTrain(buildDensity3D, BatchSize=1, Epochs=100,Channel_Ordering_Feat=(30,30,30),funcParams=[30,30,30,sgInfo,3,1])
+#model.saveModel("3d_20_sg_dense")
+
+
+#model.generativeDataTesting(buildDensity3D,SampleNumber=1,Channel_Ordering_Feat=(30,30,30),funcParams=[30,30,30,sgInfo,3,1])
