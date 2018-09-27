@@ -5,7 +5,7 @@ import math
 import keras
 import sys
 import decimal
-sys.path.append(r'/home/jake/Documents/Programming/Github/Python/')
+sys.path.append(r'/home/minns_jake/downloads/')
 from SliceOPy import NetSlice, DataSlice
 import keras.backend as K
 import tensorflow as tf
@@ -36,7 +36,7 @@ def applyOpperation(position, symmetryOpp):
     return round(eval(a),3)
 
 def readSGLib():
-    file_ = open("/home/jake/Documents/Programming/Github/Python/Crysto/syminfo.txt","r") #read file
+    file_ = open("syminfo.txt","r") #read file
     lines = file_.read().split('\n') #split file into lines 
     lines = list(filter(None, lines)) # fastest
     index = []
@@ -47,14 +47,19 @@ def readSGLib():
             item = []
             sym = []
             cen = []
-        if line.split()[0] == "number":
+            laue = []
+
+        elif line.split()[0] == "number":
             item.append(line.split()[1])           
-        if line.split()[0] == "symop":
+        elif line.split()[0] == "symop":
             sym.append(line.split()[1].split(','))
-        if line.split()[0] == "cenop":
-            cen.append(line.split()[1].split(','))  
+        elif line.split()[0] == "cenop":
+            cen.append(line.split()[1].split(','))
+        elif line.split()[0] == "symbol" and line.split()[1] == "laue":
+            laue.append(line.split("'")[3])
         if line == "end_spacegroup":
             if item[0] not in index:
+                item.append(laue)
                 item.append(sym)
                 item.append(cen)
                 sgData.append(item) 
@@ -132,7 +137,7 @@ def applyMultiPos(positionTable):
 
 def buildDensity2D(xSize,ySize,sgInfo,atomSize,sig):
 
-    sg = np.random.randint(low=80,high=100)
+    sg = np.random.randint(low=194,high=230)
 
     positionTable = []
 
@@ -197,7 +202,7 @@ def buildDensity2D(xSize,ySize,sgInfo,atomSize,sig):
 
 def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     #Select random spacegroup
-    sg = np.random.randint(low=80,high=100)
+    sg = np.random.randint(low=194,high=230)
 
     #Initilise postion table
     positionTable = []
@@ -207,9 +212,10 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
         positionTable.append(["0",str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0])])
 
     #build a list of symmetry operators and centering operations
-    sym = sgInfo[sg][1:][0]
-    cen = sgInfo[sg][2:][0]
-
+    sym = sgInfo[sg][2:][0]
+    cen = sgInfo[sg][3:][0]
+    laue = sgInfo[sg][1][0]
+    
     #positionTable = applyMultiPos(positionTable)
     #Apply symmetry operations
     positionTable = (buildAndApplySymmetryOpperations(positionTable,sym))
@@ -286,7 +292,36 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     out = out-  np.amin(out)
     out = out/np.amax(out)
 
-    return out,sg-80
+    sg1 = sg
+
+    if laue=="-1":
+        sg=0
+    elif laue=="2/m":
+        sg=1
+    elif laue=="mmm":
+        sg=2
+    elif laue == "4/m":
+        sg=3
+    elif laue == "4/mmm":
+        sg=4
+    elif laue == "-3":
+        sg = 5
+    elif laue == "-3m":
+        sg = 6 
+    elif laue =="6/m":
+        sg= 7
+    elif laue == "6/mmm":
+        sg = 8
+    elif laue == "m-3":
+        sg = 9
+    elif laue == "m-3m":
+        sg = 10
+    else:
+        sg = 11
+
+    print(sg1-194)
+
+    return out,sg1-194
 
 def genrateTrainingData(num,funcParams):
 
@@ -307,30 +342,31 @@ def genrateTrainingData(num,funcParams):
 def buildModelConv(input_shape,num_classes):
     
     model = keras.Sequential()
-    model.add(keras.layers.Conv2D(124, (3, 3), input_shape=input_shape,padding="same",data_format= keras.backend.image_data_format()))
+    model.add(keras.layers.Conv2D(32, (3, 3), input_shape=input_shape,padding="same",data_format= keras.backend.image_data_format()))
     model.add(keras.layers.Activation('relu'))
     model.add(keras.layers.BatchNormalization())
     #model.add(keras.layers.MaxPooling2D(pool_size=(2, 2),data_format= keras.backend.image_data_format()))
 #    
-    model.add(keras.layers.Conv2D(124, (3, 3),padding="same",data_format= keras.backend.image_data_format()))
+    model.add(keras.layers.Conv2D(32, (3, 3),padding="same",data_format= keras.backend.image_data_format()))
     model.add(keras.layers.Activation('relu'))
     model.add(keras.layers.BatchNormalization())
     model.add(keras.layers.MaxPooling2D(pool_size=(2, 2),data_format= keras.backend.image_data_format()))
 
 ##    
-    model.add(keras.layers.Conv2D(124, (3, 3),data_format= K.image_data_format()))
-    model.add(keras.layers.Activation('relu'))
-    model.add(keras.layers.BatchNormalization())
-    model.add(keras.layers.MaxPooling2D(pool_size=(2, 2),data_format= K.image_data_format()))
+   # model.add(keras.layers.Conv2D(124, (3, 3),data_format= K.image_data_format()))
+   # model.add(keras.layers.Activation('relu'))
+   # model.add(keras.layers.BatchNormalization())
+   # model.add(keras.layers.MaxPooling2D(pool_size=(2, 2),data_format= K.image_data_format()))
     
     model.add(keras.layers.Flatten())  # this converts our 3D feature maps to 1D feature vectors
     
     #model.add(keras.layers.Dense(600))
     #model.add(keras.layers.Activation('sigmoid'))
-    model.add(keras.layers.Dense(1400))
+    model.add(keras.layers.Dense(100))
     model.add(keras.layers.Activation('relu'))
     model.add(keras.layers.BatchNormalization())
-    model.add(keras.layers.Dense(230))
+    model.add(keras.layers.Dropout(0.25))
+    model.add(keras.layers.Dense(36))
     model.add(keras.layers.Activation('softmax'))
 
     return model
@@ -352,30 +388,31 @@ def buildModelDense(input_shape,num_classes):
 
 sgInfo = readSGLib()
 """
-for i in range(100):
+for i in range(1000):
 
-    ff,sg = buildDensity3D(60,60,60,sgInfo,3,1)
+    a,s = buildDensity3D(30,30,30,sgInfo,4,1)
+    #print(s)
 #writeGRD(dd.shape,dd,"density")
 #writeGRD(ff.shape,ff,"reciprocal")
 
 """ 
 
-#genrateTrainingData(100,[30,30,30,sgInfo,4,1])
+#genrateTrainingData(10000,[30,30,30,sgInfo,4,1])
 feat = np.load("feat.npy")
 label = np.load("label.npy")
-print(feat.shape,label.shape)
+#print(feat.shape,label.shape)
 
 model = buildModelConv((30,30,30),1)
-data = DataSlice(Features=feat,Labels=label,Channel_Features=None,Split_Ratio=0.8)
+data = DataSlice(Features=feat,Labels=label,Channel_Features=None,Shuffle = False,Split_Ratio=0.8)
 data.channelOrderingFormatFeatures(30,30,30)
-data.oneHot(230)
+data.oneHot(36)
 model = NetSlice(model,'keras', data)
-#model.loadModel('20_sg_dense',customObject=None)
+model.loadModel('3d_230_laue_conv_simple',customObject=None)
 model.compileModel(tf.train.AdamOptimizer(), 'categorical_crossentropy', ['accuracy'])
-model.trainModel(Epochs=100,Batch_size=1,Verbose=2)
+model.trainModel(Epochs=10,Batch_size=500,Verbose=2)
 #model.generativeDataTrain(buildDensity, BatchSize=200, Epochs=10,Channel_Ordering=(36,36,1,1),Info=sgInfo)
-#model.generativeDataTrain(buildDensity3D, BatchSize=1, Epochs=100,Channel_Ordering_Feat=(30,30,30),funcParams=[30,30,30,sgInfo,3,1])
-#model.saveModel("3d_20_sg_dense")
+#model.generativeDataTrain(buildDensity3D, BatchSize=300, Epochs=10,Channel_Ordering_Feat=(30,30,30),funcParams=[30,30,30,sgInfo,4,1])
+model.saveModel("3d_230_laue_conv_simple")
 
 
 #model.generativeDataTesting(buildDensity3D,SampleNumber=1,Channel_Ordering_Feat=(30,30,30),funcParams=[30,30,30,sgInfo,3,1])
