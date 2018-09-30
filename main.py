@@ -83,7 +83,10 @@ def gkern2D(kernlen=21, nsig=3):
     gauss = guass/max1
     return gauss
 
-def gkern3D(kernlen=21, nsig=3):
+def lookUpAtomType(type):
+    return 1.0
+
+def gkern3D(atomType,kernlen, nsig):
     """Returns a 2D Gaussian kernel array."""
     # create nxn zeros
     inp = np.zeros((kernlen, kernlen,kernlen))
@@ -93,6 +96,9 @@ def gkern3D(kernlen=21, nsig=3):
     guass = fi.gaussian_filter(inp, nsig)/kernlen
     max1 = np.amax(guass)
     gauss = guass/max1
+    density = lookUpAtomType(atomType)
+    gauss = gauss * (density/np.sum(gauss))
+    print(np.sum(gauss))
     return gauss
 
 def plotDensity(density):
@@ -204,6 +210,55 @@ def buildDensity2D(xSize,ySize,sgInfo,atomSize,sig):
 
     return density,np.array([sg-80])
 
+def buildSF3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
+    #Select random spacegroup
+    sg = np.random.randint(low=194,high=230)
+
+    #Initilise postion table
+    positionTable = []
+    positionTable.append(["0",str("0"),str(0),str(0)])
+
+    #for a random amount of atom assign a random position
+    for atom in range(0,np.random.randint(1,2)):
+        positionTable.append(["0",str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0])])
+    #positionTable = [["0","0","0","0"],["0","0.134","0.244","0.6"]]
+    #build a list of symmetry operators and centering operations
+    sym = sgInfo[sg][3:][0]
+
+    cen = sgInfo[sg][4:][0]
+    laue = sgInfo[sg][2][0]
+    name = sgInfo[sg][1][0]
+
+    print(name)
+    
+    #positionTable = applyMultiPos(positionTable)
+    #Apply symmetry operations
+    positionTable = (buildAndApplySymmetryOpperations(positionTable,sym))
+    #Apply centering operations
+    positionTable = (buildAndApplySymmetryOpperations(positionTable,cen))
+
+    positionTable = np.array(positionTable,dtype=np.dtype(float))[:,[1,2,3]] %1
+    #Round results for removal of duplicates
+    positionTable = np.around(positionTable,decimals=6)
+    #Remove duplicates
+    positionTable = np.unique(positionTable,axis=0)
+
+
+    a = 5.0
+    #Generate empty density
+    ff = np.zeros((20,20,20))
+    print(positionTable)
+    for h in range(0,20):
+        for k in range(0,20):
+            for l in range(0,20):
+                for atom in positionTable:
+                    ff[h][k][l] = ff[h][k][l] + ( (((float(h)**2+float(k)**2+float(l)**2)/a**2)**0.5)*1 * np.exp(-2j*np.pi*(h*atom[0]+k*atom[1]+l*atom[2])))
+    #
+    ff = np.multiply(ff,ff)
+    ff = ff/np.amax(ff)
+
+    return ff.real,sg-15
+
 def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     #Select random spacegroup
     sg = np.random.randint(low=15,high=74)
@@ -232,6 +287,8 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     #Generate empty density
     density = np.zeros((xSize,ySize,zSize))
     #Calculate modulus of x,y,z corodinates
+    atomType = np.array(positionTable,dtype=np.dtype(float))[:,[0]]
+
     positionTable = np.array(positionTable,dtype=np.dtype(float))[:,[1,2,3]] %1
     #Round results for removal of duplicates
     positionTable = np.around(positionTable,decimals=6)
@@ -256,7 +313,7 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
         yi = int(np.round(y*ySize))
         zi = int(np.round(z*zSize))
 
-        atom = gkern3D(atomSize,sig)
+        atom = gkern3D(atomType[i],atomSize,sig)
 
         xmin = int((atomSize)+(xi-(atomSize/2)))
         xmax = int((atomSize)+(xi+(atomSize/2)))
@@ -274,7 +331,7 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     ff= np.fft.fftn(density).real
     
 
-    multi = 0.4
+    multi = 0.25
 
     len_a = ff.shape[0]
     len_b = ff.shape[1]
@@ -307,6 +364,9 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     
     out= np.concatenate((out_bottom,out_top),axis=2)
 
+    out2 = np.multiply(out,out)
+    #out = np.mod(out)
+
     out = out-  np.amin(out)
     out = out/np.amax(out)
 
@@ -337,7 +397,7 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     else:
         sg = 11
 
-    return out,sg1-15
+    return out2,out,sg1-15
 
 def genrateTrainingData(num,funcParams):
 
@@ -405,10 +465,10 @@ def buildModelDense(input_shape,num_classes):
 sgInfo = readSGLib()
 
 
-"""
-dd,ff,s = buildDensity3D(30,40,50,sgInfo,2,1)
+
+ff,s = buildSF3D(60,60,60,sgInfo,4,1)
 print(ff.shape)
-writeGRD(dd.shape,dd,"density_cubic")
+#writeGRD(dd.shape,dd,"density_cubic")
 #
 writeGRD(ff.shape,ff,"reciprocal_cubic")
  
@@ -431,5 +491,5 @@ model.trainModel(Epochs=2,Batch_size=10,Verbose=2)
 #model.generativeDataTrain(buildDensity3D, BatchSize=300, Epochs=10,Channel_Ordering_Feat=(30,30,30),funcParams=[30,30,30,sgInfo,4,1])
 model.saveModel("3d_230_laue_conv_simple")
 
-
+"""
 #model.generativeDataTesting(buildDensity3D,SampleNumber=1,Channel_Ordering_Feat=(30,30,30),funcParams=[30,30,30,sgInfo,3,1])
