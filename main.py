@@ -83,7 +83,10 @@ def gkern2D(kernlen=21, nsig=3):
     gauss = guass/max1
     return gauss
 
-def gkern3D(kernlen=21, nsig=3):
+def lookUpAtomType(type):
+    return 1.0
+
+def gkern3D(atomType,kernlen, nsig):
     """Returns a 2D Gaussian kernel array."""
     # create nxn zeros
     inp = np.zeros((kernlen, kernlen,kernlen))
@@ -93,6 +96,8 @@ def gkern3D(kernlen=21, nsig=3):
     guass = fi.gaussian_filter(inp, nsig)/kernlen
     max1 = np.amax(guass)
     gauss = guass/max1
+    density = lookUpAtomType(atomType)
+    gauss = gauss * (density/np.sum(gauss))
     return gauss
 
 def plotDensity(density):
@@ -204,6 +209,55 @@ def buildDensity2D(xSize,ySize,sgInfo,atomSize,sig):
 
     return density,np.array([sg-80])
 
+def buildSF3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
+    #Select random spacegroup
+    sg = np.random.randint(low=15,high=74)
+
+    #Initilise postion table
+    positionTable = []
+    positionTable.append(["0",str("0"),str(0),str(0)])
+
+    #for a random amount of atom assign a random position
+    for atom in range(0,np.random.randint(1,2)):
+        positionTable.append(["0",str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0])])
+    #positionTable = [["0","0","0","0"],["0","0.134","0.244","0.6"]]
+    #build a list of symmetry operators and centering operations
+    sym = sgInfo[sg][3:][0]
+
+    cen = sgInfo[sg][4:][0]
+    laue = sgInfo[sg][2][0]
+    name = sgInfo[sg][1][0]
+
+    #print(name)
+    
+    #positionTable = applyMultiPos(positionTable)
+    #Apply symmetry operations
+    positionTable = (buildAndApplySymmetryOpperations(positionTable,sym))
+    #Apply centering operations
+    positionTable = (buildAndApplySymmetryOpperations(positionTable,cen))
+
+    positionTable = np.array(positionTable,dtype=np.dtype(float))[:,[1,2,3]] %1
+    #Round results for removal of duplicates
+    positionTable = np.around(positionTable,decimals=6)
+    #Remove duplicates
+    positionTable = np.unique(positionTable,axis=0)
+
+
+    a = 5.0
+    #Generate empty density
+    ff = np.zeros((15,30,30))
+    #print(positionTable)
+    for h in range(0,15):
+        for k in range(0,30):
+            for l in range(0,30):
+                for atom in positionTable:
+                    ff[h][k][l] = ff[h][k][l] + (1.0 * np.exp(-2j*np.pi*(h*atom[0]+(k-15.0)*atom[1]+(l-15.0)*atom[2])))
+    #
+    ff = np.multiply(ff,ff)
+    ff = ff/np.amax(ff)
+
+    return ff.real,sg-15
+
 def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     #Select random spacegroup
     sg = np.random.randint(low=194,high=230)
@@ -232,6 +286,8 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     #Generate empty density
     density = np.zeros((xSize,ySize,zSize))
     #Calculate modulus of x,y,z corodinates
+    atomType = np.array(positionTable,dtype=np.dtype(float))[:,[0]]
+
     positionTable = np.array(positionTable,dtype=np.dtype(float))[:,[1,2,3]] %1
     #Round results for removal of duplicates
     positionTable = np.around(positionTable,decimals=6)
@@ -256,8 +312,8 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
         yi = int(np.round(y*ySize))
         zi = int(np.round(z*zSize))
 
-        atom = gkern3D(atomSize,sig)
-
+        atom = gkern3D(atomType[i],atomSize,sig)
+#
         xmin = int((atomSize)+(xi-(atomSize/2)))
         xmax = int((atomSize)+(xi+(atomSize/2)))
 
@@ -273,8 +329,8 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     density = np.array(density)
     ff= np.fft.fftn(density).real
     
-
-    multi = 0.25
+    size_ = 15
+    multi = 0.3
 
     len_a = ff.shape[0]
     len_b = ff.shape[1]
@@ -284,18 +340,18 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     size_b = int(len_b*multi)
     size_c = int(len_c*multi)
 
-    len_a = ff.shape[0]-size_a
-    len_b = ff.shape[1]-size_b
-    len_c = ff.shape[2]-size_c
+    len_a = ff.shape[0]-size_
+    len_b = ff.shape[1]-size_
+    len_c = ff.shape[2]-size_
 
-    c8 = ff[0:size_a,0:size_b,0:size_c]
-    c4 = ff[0:size_a,0:size_b,len_c:]
-    c7 = ff[0:size_a,len_b:,0:size_c]
-    c3 = ff[0:size_a,len_b:,len_c:]
+    c8 = ff[0:size_,0:size_,0:size_]
+    c4 = ff[0:size_,0:size_,len_c:]
+    c7 = ff[0:size_,len_b:,0:size_]
+    c3 = ff[0:size_,len_b:,len_c:]
     c1 = ff[len_a:,len_b:,len_c:]
-    c2 = ff[len_a:,0:size_b,len_c:]
-    c5 = ff[len_a:,len_b:,0:size_c]
-    c6 = ff[len_a:,0:size_b,0:size_c]
+    c2 = ff[len_a:,0:size_,len_c:]
+    c5 = ff[len_a:,len_b:,0:size_]
+    c6 = ff[len_a:,0:size_,0:size_]
 
     out1 = np.concatenate((c1,c2),axis=1)
     out2 = np.concatenate((c3,c4),axis=1)
@@ -305,13 +361,26 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     #out2 = np.concatenate((c7,c8),axis=1)
     #out_top= np.concatenate((out1,out2),axis=0)
     
-   # out= np.concatenate((out_bottom,out_top),axis=2)
+
+    #out= np.concatenate((out_bottom,out_top),axis=2)
+    #out= np.concatenate((out_bottom,out_top),axis=2)
+
+    out = np.multiply(out,out)
+    #out = np.mod(out)
+
+
+    out = out/np.amax(out)
+    #numRot = np.random.randint(low=0,high=5)
+    #listRot = [[0,1],[1,0],[0,-1],[-1,0]]
+    #axis1Rot = np.random.randint(low=0,high=len(listRot))
+    #outrot = np.rot90(out,k=numRot,axes=listRot[axis1Rot])
+    #outrot = np.split(outrot,2)[0]
 
     #out = out-  np.amin(out)
     #out = out/np.amax(out)
-    out = np.multiply(out,out)
+    #out = np.multiply(out,out)
     sg1 = sg
-    out = out / np.amax(out)
+    #out = out / np.amax(out)
 
     if laue=="-1":
         sg=0
@@ -337,9 +406,9 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
         sg = 10
     else:
         sg = 11
-    #print(out.shape)
-    return out,sg1-194
 
+    #print(outrot.shape)
+    return out,sg1-194
 def genrateTrainingData(num,funcParams):
 
     dataFeat = []
@@ -359,32 +428,42 @@ def genrateTrainingData(num,funcParams):
 def buildModelConv(input_shape,num_classes):
     
     model = keras.Sequential()
-    model.add(keras.layers.Conv2D(64, (3, 3), input_shape=input_shape,padding="same",data_format= keras.backend.image_data_format()))
-    model.add(keras.layers.Activation('relu'))
+    model.add(keras.layers.Conv3D(12, (3,3,3),input_shape=input_shape,padding="same",data_format= keras.backend.image_data_format()))
     model.add(keras.layers.BatchNormalization())
-    model.add(keras.layers.MaxPooling2D(pool_size=(2, 2),data_format= keras.backend.image_data_format()))
+    model.add(keras.layers.Activation('relu'))
+    #model.add(keras.layers.BatchNormalization())
+    #model.add(keras.layers.Dropout(0.25))
+    model.add(keras.layers.MaxPooling3D(pool_size=(2, 2,2),data_format= keras.backend.image_data_format()))
 #    
-    model.add(keras.layers.Conv2D(64, (3, 3),padding="same",data_format= keras.backend.image_data_format()))
-    
-    model.add(keras.layers.Activation('relu'))
+    model.add(keras.layers.Conv3D(12, (3,3, 3),padding="same",data_format= keras.backend.image_data_format()))
     model.add(keras.layers.BatchNormalization())
-    #model.add(keras.layers.MaxPooling2D(pool_size=(2, 2),data_format= keras.backend.image_data_format()))
-
+    model.add(keras.layers.Activation('relu'))
+    #model.add(keras.layers.Dropout(0.25))
+    model.add(keras.layers.MaxPooling3D(pool_size=(2, 2,2),data_format= keras.backend.image_data_format()))
+   # model.add(keras.layers.Dropout(0.25))
 ##    
-   # model.add(keras.layers.Conv2D(64, (3, 3),data_format= K.image_data_format()))
-   # model.add(keras.layers.Activation('relu'))
-   # model.add(keras.layers.BatchNormalization())
-    #model.add(keras.layers.MaxPooling2D(pool_size=(2, 2),data_format= K.image_data_format()))
-    
+    #model.add(keras.layers.Conv3D(64, (3,3,3),data_format= K.image_data_format()))
+    #model.add(keras.layers.BatchNormalization())
+    #model.add(keras.layers.Activation('relu'))
+    #777model.add(keras.layers.Conv2D(64,(3,3),data_format=K.image_data_format()))
+    #model.add(keras.layers.Activation('relu'))
+    #model.add(keras.layers.MaxPooling3D(pool_size=(2,2,2),data_format=keras.backend.image_data_format()))
+    model.add(keras.layers.Dropout(0.35))
+
+    #model.add(keras.layers.BatchNormalization())
+    model.add(keras.layers.AveragePooling3D(pool_size=(2,2 ,2),data_format= K.image_data_format()))
+    #model.add(keras.layers.Dropout(0.25))
     model.add(keras.layers.Flatten())  # this converts our 3D feature maps to 1D feature vectors
     
-    #model.add(keras.layers.Dense(600))
-    #model.add(keras.layers.Activation('sigmoid'))
+    #model.add(keras.layers.Dense(1048))
+    #model.add(keras.layers.BatchNormalization())
+    #model.add(keras.layers.Activation('relu'))
     #model.add(keras.layers.Dense(456))
     #model.add(keras.layers.Activation('relu'))
     #model.add(keras.layers.BatchNormalization())
-    #model.add(keras.layers.Dropout(0.35))
+    model.add(keras.layers.Dropout(0.5))
     model.add(keras.layers.Dense(36))
+    model.add(keras.layers.BatchNormalization())
     model.add(keras.layers.Activation('sigmoid'))
 
     return model
@@ -394,10 +473,10 @@ def buildModelDense(input_shape,num_classes):
     model = keras.Sequential()
     model.add(keras.layers.Flatten())  # this converts our 3D feature maps to 1D feature vectors
 
-    model.add(keras.layers.Dense(12000,input_dim=15625,activation='sigmoid'))
-    model.add(keras.layers.Dense(6000,activation='sigmoid'))
-    model.add(keras.layers.Dense(300,activation='sigmoid'))
-    model.add(keras.layers.Dense(36,activation='softmax'))
+    model.add(keras.layers.Dense(35000,input_dim=13500,activation='sigmoid'))
+    model.add(keras.layers.Dense(12000,activation='sigmoid'))
+    model.add(keras.layers.Dense(1000,activation='sigmoid'))
+    model.add(keras.layers.Dense(59,activation='sigmoid'))
 
     
     return model
@@ -409,31 +488,28 @@ sgInfo = readSGLib()
 
 
 """
-dd,ff,s = buildDensity3D(30,40,50,sgInfo,2,1)
+ff,s = buildSF3D(60,60,60,sgInfo,4,1)
 print(ff.shape)
-writeGRD(dd.shape,dd,"density_cubic")
+#writeGRD(dd.shape,dd,"density_cubic")
 #
 writeGRD(ff.shape,ff,"reciprocal_cubic")
  
 """
-genrateTrainingData(35000,[60,60,60,sgInfo,2,1])
+genrateTrainingData(20000,[60,60,60,sgInfo,2,1])
 feat = np.load("feat.npy")
 label = np.load("label.npy")
 #print(feat.shape,label.shape)
 
-model = buildModelConv((30,30,15),1)
-data = DataSlice(Features=feat,Labels=label,Channel_Features=[30,30,15],Shuffle = False,Split_Ratio=0.8)
-data.channelOrderingFormatFeatures(30,30,15)
+model = buildModelConv((15,30,30, 1),1)
+data = DataSlice(Features=feat,Labels=label,Channel_Features=[15,30,30,1],Shuffle = False,Split_Ratio=0.85)
+data.channelOrderingFormatFeatures(15,30,30,1)
 data.oneHot(36)
 model = NetSlice(model,'keras', data)
-#model.loadModel('3d_Otrh_conv_simple',customObject=None)
+#model.loadModel('3d_Cubic_conv_simple',customObject=None)
 #print(model.summary())
 model.compileModel(tf.train.AdamOptimizer(), 'categorical_crossentropy', ['accuracy'])
 #print(model.summary())
-model.trainModel(Epochs=50,Batch_size=2000,Verbose=2)
+model.trainModel(Epochs=20,Batch_size=1000,Verbose=1)
 #model.generativeDataTrain(buildDensity, BatchSize=200, Epochs=10,Channel_Ordering=(36,36,1,1),Info=sgInfo)
 #model.generativeDataTrain(buildDensity3D, BatchSize=3000, Epochs=10,Channel_Ordering_Feat=(30,30,30),funcParams=[60,60,60,sgInfo,4,1],OneHot=36)
-model.saveModel("3d_Otrh_conv_simple")
-
-
-#model.generativeDataTesting(buildDensity3D,SampleNumber=1,Channel_Ordering_Feat=(30,30,30),funcParams=[30,30,30,sgInfo,3,1])
+model.saveModel("3d_Cubic_conv_simple")
