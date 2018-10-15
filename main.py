@@ -5,7 +5,7 @@ import math
 import keras
 import sys
 import decimal
-sys.path.append(r'/home/minns_jake/downloads/')
+sys.path.append(r'/home/jake/Documents/Programming/Github/Python/')
 from SliceOPy import NetSlice, DataSlice
 import keras.backend as K
 import tensorflow as tf
@@ -109,7 +109,7 @@ def writeGRD(fdat,data,name):
     out = open(name+".grd","w")
     out.write("Title: Put your title \n")
     cell = np.array(fdat)/10.0                                                         
-    out.write(" "+str(cell[0])+"  "+str(cell[1])+"  "+str(cell[2])+"  90.0000  90.0000  90.0000\n")
+    out.write(" "+str(cell[0])+"  "+str(cell[1])+"  "+str(cell[2])+"  90.0   90.0   90.0\n")
     out.write("   "+str(fdat[0])+"    "+str(fdat[1])+"   "+str(fdat[2])+" \n")
 
 
@@ -209,16 +209,107 @@ def buildDensity2D(xSize,ySize,sgInfo,atomSize,sig):
 
     return density,np.array([sg-80])
 
+def randomCellAngle():
+    return np.random.uniform(90.5,120.0)
+def randomCellParam():
+    return np.random.uniform(0.5,30.0)
+
+def randomCell():
+    
+    cT = np.random.randint(low=0,high=7) # Choose Cell Type 0=Tri,1=Mono,2=Orth,3=Tetr,4=Triagonal,5=Hex,6=Cubic
+    
+    a,b,c,alpha,beta,gamma = 0.0,0.0,0.0,0.0,0.0,0.0
+    sg = 0
+
+    if cT==0:
+        a = randomCellParam()
+        b = randomCellParam()
+        c = randomCellParam()
+        alpha = randomCellAngle()
+        beta = randomCellAngle()
+        gamma = randomCellAngle()
+        sg = np.random.randint(low=0,high=2)
+    elif cT==1:
+        a = randomCellParam()
+        b = randomCellParam()
+        c = randomCellParam()
+        alpha = 90.0
+        gamma = 90.0
+        beta = randomCellAngle()
+        sg = np.random.randint(low=2,high=15)
+
+    
+    elif cT==2:
+        a = randomCellParam()
+        b = randomCellParam()
+        c = randomCellParam()
+        alpha = 90.0
+        beta = 90.0
+        gamma = 90.0
+        sg = np.random.randint(low=15,high=74)
+
+    elif cT==3:
+        a = randomCellParam()
+        b = randomCellParam()
+        c = a
+        alpha = 90.0
+        beta = 90.0
+        gamma = 90.0
+        sg = np.random.randint(low=74,high=142)
+
+    elif cT==4:
+        a = randomCellParam()
+        b = a
+        c = a
+        alpha = randomCellAngle()
+        beta = alpha
+        gamma = alpha
+        sg = np.random.randint(low=142,high=167)
+
+    elif cT==5:
+        a = randomCellParam()
+        b = randomCellParam()
+        c = randomCellParam()
+        gamma = 120.0
+        alpha = 90.0
+        beta = 90.0
+        sg = np.random.randint(low=167,high=194)
+
+    elif cT==6:
+        a = randomCellParam()
+        b = a
+        c = a
+        gamma = 90.0
+        alpha = 90.0
+        beta = 90.0
+        sg = np.random.randint(low=194,high=230)
+
+    else:       
+        print("Incorrect Cell Type Chosen")
+        sys.exit()   
+
+    return a,b,c,alpha,beta,gamma,sg
+
+def convertToPosition(positionTable,a,b,c,alpha,beta,gamma):
+    
+    #positionTable = np.array(positionTable)
+    rad = np.pi/180.0
+    omega = a*b*c*(1-(np.cos(alpha*rad)**2)-(np.cos(beta*rad)**2)-(np.cos(gamma*rad)**2)+2*np.cos(alpha*rad)*np.cos(beta*rad)*np.cos(gamma*rad))**0.5
+    convertArr = np.array([[a,b*np.cos(gamma*rad),c*np.cos(beta*rad)],[0,b*np.sin(gamma*rad),c*((np.cos(beta*rad)*np.cos(gamma*rad)-np.cos(gamma*rad))/(np.sin(gamma*rad)))],[0.0,0.0,omega/(a*b*np.sin(gamma*rad))]])
+    out = []
+    for i in positionTable:
+        out.append(np.matmul(np.array(i).transpose(),convertArr).tolist())
+    return out
 def buildSF3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     #Select random spacegroup
-    sg = np.random.randint(low=15,high=74)
 
+    a,b,c,alpha,beta,gamma,sg = randomCell()
     #Initilise postion table
     positionTable = []
-    positionTable.append(["0",str("0"),str(0),str(0)])
+    #positionTable.append(["0",str("0"),str(0),str(0)])
 
     #for a random amount of atom assign a random position
-    for atom in range(0,np.random.randint(1,2)):
+    for atom in range(0,np.random.randint(1,6)):
         positionTable.append(["0",str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0])])
     #positionTable = [["0","0","0","0"],["0","0.134","0.244","0.6"]]
     #build a list of symmetry operators and centering operations
@@ -241,9 +332,10 @@ def buildSF3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     positionTable = np.around(positionTable,decimals=6)
     #Remove duplicates
     positionTable = np.unique(positionTable,axis=0)
+    #positions = np.array(positionTable,dtype=np.dtype(float))[:,[1,2,3]]
+    positionTable = convertToPosition(positionTable,a,b,c,alpha,beta,gamma)
 
-
-    a = 5.0
+    
     #Generate empty density
     ff = np.zeros((15,30,30))
     #print(positionTable)
@@ -256,11 +348,12 @@ def buildSF3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     ff = np.multiply(ff,ff)
     ff = ff/np.amax(ff)
 
-    return ff.real,sg-15
+    return ff.real,sg
 
-def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
+def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig,sg=None):
     #Select random spacegroup
-    sg = np.random.randint(low=194,high=230)
+    if sg == None:
+        sg = np.random.randint(low=194,high=230)
 
     #Initilise postion table
     positionTable = []
@@ -329,7 +422,7 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     density = np.array(density)
     ff= np.fft.fftn(density).real
     
-    size_ = 15
+    size_ = 30
     multi = 0.3
 
     len_a = ff.shape[0]
@@ -408,13 +501,15 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
         sg = 11
 
     #print(outrot.shape)
-    return out,sg1-194
+    return density,ff,sg1-194
 def genrateTrainingData(num,funcParams):
 
     dataFeat = []
     dataLabel = []
     for i in range(0,num):
-        item = buildDensity3D(*funcParams)
+        if i % 100 == 0:
+            print(i)
+        item = buildSF3D(*funcParams)
         dataFeat.append(item[0])
         dataLabel.append(item[1])
 
@@ -485,17 +580,15 @@ def buildModelDense(input_shape,num_classes):
 
 
 sgInfo = readSGLib()
-
-
 """
-ff,s = buildSF3D(60,60,60,sgInfo,4,1)
+ff,s = buildSF3D(60,320,160,sgInfo,4,1)
 print(ff.shape)
 #writeGRD(dd.shape,dd,"density_cubic")
 #
 writeGRD(ff.shape,ff,"reciprocal_cubic")
- 
 """
-genrateTrainingData(20000,[60,60,60,sgInfo,2,1])
+
+genrateTrainingData(30000,[60,60,60,sgInfo,2,1])
 feat = np.load("feat.npy")
 label = np.load("label.npy")
 #print(feat.shape,label.shape)
