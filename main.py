@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import scipy.ndimage.filters as fi
 import math
 import keras
+import time
 import sys
 import decimal
 sys.path.append(r'/home/jake/Documents/Programming/Github/Python/')
@@ -104,12 +105,12 @@ def plotDensity(density):
     plt.imshow(density)
     plt.show()
 
-def writeGRD(fdat,data,name):
+def writeGRD(fdat,data,name,a,b,c,alpha,beta,gamma):
 
     out = open(name+".grd","w")
     out.write("Title: Put your title \n")
     cell = np.array(fdat)/10.0                                                         
-    out.write(" "+str(cell[0])+"  "+str(cell[1])+"  "+str(cell[2])+"  90.0   90.0   90.0\n")
+    out.write(" "+str(a)+"  "+str(b)+"  "+str(c)+"  "+str(alpha)+"  "+str(beta)+"  "+str(gamma)+"\n")
     out.write("   "+str(fdat[0])+"    "+str(fdat[1])+"   "+str(fdat[2])+" \n")
 
 
@@ -214,9 +215,10 @@ def randomCellAngle():
 def randomCellParam():
     return np.random.uniform(0.5,30.0)
 
-def randomCell():
-    
-    cT = np.random.randint(low=0,high=7) # Choose Cell Type 0=Tri,1=Mono,2=Orth,3=Tetr,4=Triagonal,5=Hex,6=Cubic
+def randomCell(cT = None,sG=None,A=None,B=None,C=None,Alpha=None,Beta=None,Gamma=None):
+
+    if cT == None:
+        cT = np.random.randint(low=0,high=7) # Choose Cell Type 0=Tri,1=Mono,2=Orth,3=Tetr,4=Triagonal,5=Hex,6=Cubic
     
     a,b,c,alpha,beta,gamma = 0.0,0.0,0.0,0.0,0.0,0.0
     sg = 0
@@ -250,8 +252,8 @@ def randomCell():
 
     elif cT==3:
         a = randomCellParam()
-        b = randomCellParam()
-        c = a
+        b = a
+        c = randomCellParam()
         alpha = 90.0
         beta = 90.0
         gamma = 90.0
@@ -260,15 +262,15 @@ def randomCell():
     elif cT==4:
         a = randomCellParam()
         b = a
-        c = a
-        alpha = randomCellAngle()
-        beta = alpha
-        gamma = alpha
+        c = randomCellParam()
+        alpha = 90.0
+        beta = 90.0
+        gamma = 120.0
         sg = np.random.randint(low=142,high=167)
 
     elif cT==5:
         a = randomCellParam()
-        b = randomCellParam()
+        b = a
         c = randomCellParam()
         gamma = 120.0
         alpha = 90.0
@@ -288,6 +290,25 @@ def randomCell():
         print("Incorrect Cell Type Chosen")
         sys.exit()   
 
+    if sG != None:
+        sg = sG
+    
+    if A != None:
+        a = A
+    
+    if  B != None:
+        b = B
+
+    if C != None:
+        c = C
+
+    if Alpha != None:
+        alpha = Alpha
+    if Beta != None:
+        beta = Beta
+    if Gamma != None:
+        gamma = Gamma
+
     return a,b,c,alpha,beta,gamma,sg
 
 def convertToPosition(positionTable,a,b,c,alpha,beta,gamma):
@@ -299,11 +320,12 @@ def convertToPosition(positionTable,a,b,c,alpha,beta,gamma):
     out = []
     for i in positionTable:
         out.append(np.matmul(np.array(i).transpose(),convertArr).tolist())
+
     return out
-def buildSF3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
+def buildSF3D(hShape,kShape,lShape,sgInfo,atomSize,sig):
     #Select random spacegroup
 
-    a,b,c,alpha,beta,gamma,sg = randomCell()
+    a,b,c,alpha,beta,gamma,sg = randomCell(cT=0,sG=1,A=18.8,B=15.43,C=7.24,Alpha=91.92,Beta=96.422,Gamma=114.05)
     #Initilise postion table
     positionTable = []
     #positionTable.append(["0",str("0"),str(0),str(0)])
@@ -311,7 +333,7 @@ def buildSF3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     #for a random amount of atom assign a random position
     for atom in range(0,np.random.randint(1,6)):
         positionTable.append(["0",str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0])])
-    #positionTable = [["0","0","0","0"],["0","0.134","0.244","0.6"]]
+    positionTable = [["0","0","0","0"],["0","0.123","0.321","0.213"]]
     #build a list of symmetry operators and centering operations
     sym = sgInfo[sg][3:][0]
 
@@ -333,22 +355,75 @@ def buildSF3D(xSize,ySize,zSize,sgInfo,atomSize,sig):
     #Remove duplicates
     positionTable = np.unique(positionTable,axis=0)
     #positions = np.array(positionTable,dtype=np.dtype(float))[:,[1,2,3]]
-    positionTable = convertToPosition(positionTable,a,b,c,alpha,beta,gamma)
+    #positionTable = convertToPosition(positionTable,a,b,c,alpha,beta,gamma)
 
-    
     #Generate empty density
-    ff = np.zeros((15,30,30))
-    #print(positionTable)
-    for h in range(0,15):
-        for k in range(0,30):
-            for l in range(0,30):
-                for atom in positionTable:
-                    ff[h][k][l] = ff[h][k][l] + (1.0 * np.exp(-2j*np.pi*(h*atom[0]+(k-15.0)*atom[1]+(l-15.0)*atom[2])))
-    #
-    ff = np.multiply(ff,ff)
-    ff = ff/np.amax(ff)
+   # ff = np.zeros((hShape[1]-hShape[0],kShape[1]-kShape[0],lShape[1]-lShape[0]))
 
-    return ff.real,sg
+   # for h in range(0,np.abs(hShape[1])+np.abs(hShape[0])):
+   #     for k in range(0,np.abs(kShape[1])+np.abs(kShape[0])):
+   #         for l in range(0,np.abs(lShape[1])+np.abs(lShape[0])):
+   #             for atom in positionTable:
+   #                 ff[h][k][l] = ff[h][k][l] + (1.0 * np.exp(-2j*np.pi*((h+hShape[0])*atom[0]+(k+kShape[0])*atom[1]+(l+hShape[0])*atom[2])))
+    #
+
+    h = np.arange(hShape[0],hShape[1])
+    k = np.arange(kShape[0],kShape[1])
+    l = np.arange(lShape[0],lShape[1])
+    #h.shape[0]*k.shape[0]*l.shape[0]
+    grid = np.array(np.meshgrid(h,k,l)).T.reshape(h.shape[0]*k.shape[0]*l.shape[0],3,order="C")
+    #Generate empty density
+    ff2 = np.full((len(positionTable),h.shape[0]*k.shape[0]*l.shape[0],1), 0.+0.j)
+    VFunc = np.vectorize(SF)
+
+    for atom in range(0,len(positionTable)):
+        temp = VFunc(grid,positionTable[atom])
+        t1 = np.multiply(temp[:,[0]],temp[:,[1]],casting='same_kind')
+        ff2[atom] = np.multiply(t1,temp[:,[2]],casting='same_kind')
+        #ff2[atom] = np.prod(temp,axis=1)
+    #
+    ff2 = np.sum(ff2,axis=0).reshape(h.shape[0],k.shape[0],l.shape[0],order="F")
+    #ff2 = np.flip(ff2,0)
+    ff2 = np.flip(ff2,2)
+
+
+    print(a,b,c,alpha,beta,gamma,sg)
+
+    #ff2r = ff2.real
+    ff2r = np.fft.fftn(ff2).real
+    
+    ff2 = np.multiply(ff2.real,ff2.real)
+    #ff2 = ff2/np.amax(ff2)
+    #ff1r = np.fft.ifftn(ff).real
+
+    #ff = np.multiply(ff,ff)
+    #ff = ff/np.amax(ff)
+   
+    
+
+
+
+
+
+    return ff2,ff2r,sg,a,b,c,alpha,beta,gamma
+
+def SF(ml,atom):
+    return (np.exp(-2j*np.pi*(ml*atom)))
+
+def vecSF(positionTable):
+        print(positionTable)
+        h = np.arange(-15,15)
+        k = np.arange(-15,15)
+        l = np.arange(-15,15)
+        #h.shape[0]*k.shape[0]*l.shape[0]
+        grid = np.array(np.meshgrid(h,k,l)).T.reshape(h.shape[0]*k.shape[0]*l.shape[0],3,order="C")
+        VFunc = np.vectorize(SF)
+
+        temp = VFunc(grid,positionTable)
+        t1 = np.multiply(temp[:,[0]],temp[:,[1]],casting='same_kind')
+        return np.multiply(t1,temp[:,[2]],casting='same_kind')
+        #ff2[atom] = np.prod(temp,axis=1)
+
 
 def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig,sg=None):
     #Select random spacegroup
@@ -580,14 +655,18 @@ def buildModelDense(input_shape,num_classes):
 
 
 sgInfo = readSGLib()
-"""
-ff,s = buildSF3D(60,320,160,sgInfo,4,1)
-print(ff.shape)
-#writeGRD(dd.shape,dd,"density_cubic")
-#
-writeGRD(ff.shape,ff,"reciprocal_cubic")
-"""
 
+
+
+
+
+ff,dd,s,a,b,c,alpha,beta,gamma = buildSF3D([-15,15],[-15,15],[-15,15],sgInfo,4,1)
+print(ff.shape)
+writeGRD(dd.shape,dd,"density_cubic",a,b,c,alpha,beta,gamma)
+#
+writeGRD(ff.shape,ff,"reciprocal_cubic",a,b,c,alpha,beta,gamma)
+
+"""
 genrateTrainingData(30000,[60,60,60,sgInfo,2,1])
 feat = np.load("feat.npy")
 label = np.load("label.npy")
@@ -606,3 +685,5 @@ model.trainModel(Epochs=20,Batch_size=1000,Verbose=1)
 #model.generativeDataTrain(buildDensity, BatchSize=200, Epochs=10,Channel_Ordering=(36,36,1,1),Info=sgInfo)
 #model.generativeDataTrain(buildDensity3D, BatchSize=3000, Epochs=10,Channel_Ordering_Feat=(30,30,30),funcParams=[60,60,60,sgInfo,4,1],OneHot=36)
 model.saveModel("3d_Cubic_conv_simple")
+
+"""
