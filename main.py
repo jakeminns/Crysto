@@ -11,19 +11,20 @@ from SliceOPy import NetSlice, DataSlice
 import keras.backend as K
 import tensorflow as tf
 import CrystoGen as cg
+
 def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig,sg=None):
     #Select random spacegroup
-    if sg == None:
-        sg = np.random.randint(low=194,high=230)
+    a,b,c,alpha,beta,gamma,sg = randomCell(cT=5,A=8.88, B=11.99,C=5.3,Alpha= 90.0,Beta= 90.0,Gamma= 90.0,sG= 72)
+
 
     #Initilise postion table
     positionTable = []
-    positionTable.append(["0",str("0"),str(0),str(0)])
+    #positionTable.append(["0",str("0"),str(0),str(0)])
 
     #for a random amount of atom assign a random position
     for atom in range(0,np.random.randint(1,2)):
         positionTable.append(["0",str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0])])
-    #positionTable = [["0","0","0","0"],["0","0.134","0.244","0.6"]]
+    positionTable = [["0","0","0","0"],["0","0.123","0.321","0.213"]]
     #build a list of symmetry operators and centering operations
     sym = sgInfo[sg][3:][0]
 
@@ -41,7 +42,7 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig,sg=None):
     density = np.zeros((xSize,ySize,zSize))
     #Calculate modulus of x,y,z corodinates
     atomType = np.array(positionTable,dtype=np.dtype(float))[:,[0]]
-
+    print(positionTable,len(positionTable))
     positionTable = np.array(positionTable,dtype=np.dtype(float))[:,[1,2,3]] %1
     #Round results for removal of duplicates
     positionTable = np.around(positionTable,decimals=6)
@@ -166,8 +167,8 @@ def buildDensity3D(xSize,ySize,zSize,sgInfo,atomSize,sig,sg=None):
 
 def buildAndApplySymmetryOpperations(positions, symmetryOpp):
     NewPositions=[]
-    for sym in range(len(symmetryOpp)):
-        for pos in range(len(positions)):
+    for sym in range(0,len(symmetryOpp)):
+        for pos in range(0,len(positions)):
             tempPos =[]
             tempPos.append(positions[pos][0])
             tempPos.append(applyOpperation(positions[pos],symmetryOpp[sym][0]))
@@ -254,16 +255,17 @@ def gkern3D(atomType,kernlen, nsig):
     gauss = gauss * (density/np.sum(gauss))
     return gauss
 
-def plotDensity(density):
-    plt.imshow(density)
-    plt.show()
-
-def writeGRD(fdat,data,name,a,b,c,alpha,beta,gamma):
+def writeGRD(fdat,data,name,a,b,c,alpha,beta,gamma,Setting=0):
 
     out = open(name+".grd","w")
     out.write("Title: Put your title \n")
-    cell = np.array(fdat)/10.0                                                         
-    out.write(" "+str(a)+"  "+str(b)+"  "+str(c)+"  "+str(alpha)+"  "+str(beta)+"  "+str(gamma)+"\n")
+    if Setting==0:
+        out.write(" "+str(fdat[0])+"  "+str(fdat[1])+"  "+str(fdat[2])+"  "+str(90)+"  "+str(90)+"  "+str(90)+"\n")
+    else:
+        out.write(" "+str(a)+"  "+str(b)+"  "+str(c)+"  "+str(alpha)+"  "+str(beta)+"  "+str(gamma)+"\n")
+    
+    cell = np.array(fdat)/10.0                              
+
     out.write("   "+str(fdat[0])+"    "+str(fdat[1])+"   "+str(fdat[2])+" \n")
 
 
@@ -286,20 +288,22 @@ def applyMultiPos(positionTable):
 
         newPos.append(i)
 
-        for a in ["-1","+0","+1"]:
-            for b in ["-1","+0","+1"]:   
-                for c in ["-1","+0","+1"]:  
+        for a in ["","+1"]:
+            for b in ["","+1"]:   
+                for c in ["","+1"]:  
                     item=[]
+                    print("x",a,"y",b,"z",c)
                     item.append("0")
                     item.append(calculateSymOp(str(i[1]),"x","x"+a))  
                     item.append(calculateSymOp(str(i[2]),"y","y"+b))       
                     item.append(calculateSymOp(str(i[3]),"z","z"+c))  
-                    newPos.append(item)   
+                    newPos.append((item) )  
 
-    return newPos
+    return (newPos)
 
 def randomCellAngle():
     return np.random.uniform(90.5,120.0)
+
 def randomCellParam():
     return np.random.uniform(0.5,30.0)
 
@@ -397,10 +401,9 @@ def randomCell(cT = None,sG=None,A=None,B=None,C=None,Alpha=None,Beta=None,Gamma
     if Gamma != None:
         gamma = Gamma
 
-    return a,b,c,alpha,beta,gamma,sg
+    return a,b,c,alpha,beta,gamma,sg,cT
 
 def convertToPosition(positionTable,a,b,c,alpha,beta,gamma):
-    
     #positionTable = np.array(positionTable)
     rad = np.pi/180.0
     omega = a*b*c*(1-(np.cos(alpha*rad)**2)-(np.cos(beta*rad)**2)-(np.cos(gamma*rad)**2)+2*np.cos(alpha*rad)*np.cos(beta*rad)*np.cos(gamma*rad))**0.5
@@ -411,102 +414,145 @@ def convertToPosition(positionTable,a,b,c,alpha,beta,gamma):
 
     return out
 
-def buildSF3D(hShape,kShape,lShape,sgInfo,atomSize,sig):
-    #Select random spacegroup
 
-    a,b,c,alpha,beta,gamma,sg = randomCell()
+def convertHKL2D(h,k,l,a,b,c,alpha,beta,gamma,cT):
+
+    rad = np.pi/180.0
+
+    if cT == 0:
+        print("No HKL to D caluclated yet")
+        sys.exit()  
+    elif cT==1:
+        d = (1.0/np.sin(beta*rad)**2.0)*(((h**2.0)/(a**2.0))+(((k**2.0)*np.sin(rad*beta)**2.0)/(b**2.0))+((l**2.0)/(c**2.0))-((2.0*h*l*np.cos(beta*rad))/a*c))
+        return (1.0/d)**0.5
+    elif cT==2:
+        d = ((h**2.0)/(a**2.0))+((k**2.0)/(b**2.0))+((l**2.0)/(c**2.0))
+    elif cT==3:
+        d = (((h**2.0)+(k**2.0))/a**2.0)+((l**2.0)/(c**2.0))
+        return (1.0/d)**0.5
+    elif cT==4:
+        print("No HKL to D caluclated yet")
+        sys.exit()  
+    elif cT==5:
+        d = (4.0/3.0)*(((h**2.0)+h*k+(k**2.0))/(a**2.0))+((l**2.0)/(c**2.0))
+        return (1/d)**0.5
+    elif cT==6:
+        d = ((h**2)+(k**2)+(l**2))/(a**2)
+        return (1/d)**0.5
+    else:
+        print("Incorrect Cell Type Chosen")
+        sys.exit()   
+
+def d22theta(d,lambd):
+    return (180.0/np.pi)*np.arcsin(lambd/(2.0*d))*2.0
+
+def buildSF3D(hShape,kShape,lShape,sgInfo):
+
+    #a,b,c,alpha,beta,gamma,sg = randomCell(cT=2,A=9.955, B=28.36,C=8.17,Alpha= 90.0,Beta= 90.0,Gamma= 90.0,sG= 72)
+    #Generaate lattice parameters and space group
+    a,b,c,alpha,beta,gamma,sg,cT = randomCell()
     #Initilise postion table
     positionTable = []
-    #positionTable.append(["0",str("0"),str(0),str(0)])
-
     #for a random amount of atom assign a random position
     for atom in range(0,np.random.randint(1,4)):
         positionTable.append(["0",str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0])])
-   # positionTable = [["0","0","0","0"],["0","0.123","0.321","0.213"]]
-    #build a list of symmetry operators and centering operations
+    #positionTable = [["0","0.0","0.0","0.0"],["0","0.123","0.321","0.231"]]
+    #build a list of symmetry operators and centering operations  
     sym = sgInfo[sg][3:][0]
-
     cen = sgInfo[sg][4:][0]
     laue = sgInfo[sg][2][0]
     name = sgInfo[sg][1][0]
 
-    #print(name)
-    
-    #positionTable = applyMultiPos(positionTable)
+    centMulti = [['x','y','z'],['x+1','y+1','z+1'],['x+1','y+1','z'],['x+1','y','z+1'],['x+1','y','z'],['x','y+1','z+1'],['x','y+1','z'],['x','y','z+1']]
     #Apply symmetry operations
+    #positionTable = applyMultiPos(positionTable)
+    positionTable = (buildAndApplySymmetryOpperations(positionTable,cen))
+    positionTable = (buildAndApplySymmetryOpperations(positionTable,centMulti))
+
     positionTable = (buildAndApplySymmetryOpperations(positionTable,sym))
     #Apply centering operations
-    positionTable = (buildAndApplySymmetryOpperations(positionTable,cen))
-
-    positionTable = np.array(positionTable,dtype=np.dtype(float))[:,[1,2,3]] %1
+    positionTable = np.array(positionTable,dtype=np.dtype(float))[:,[1,2,3]]
+    #flatten array to find index of items equal to 1 or -1
+    flat = positionTable.flatten()
+    filter_ = flat != 1.
+    filterNeg_ = flat!=-1.
+    #Combine 1 and -1 filters
+    filter_ = np.logical_and(filter_,filterNeg_)
+    #Modulo 1 for all items except those in filter
+    flat2 = flat[filter_]%1
+    #Substitute modulo 1 array into original
+    flat[filter_] = flat2 
+    #Reshape array
+    positionTable = flat.reshape(positionTable.shape)
+    #Find absolute
+    positionTable = np.abs(positionTable)
     #Round results for removal of duplicates
-    positionTable = np.around(positionTable,decimals=6)
+    positionTable = np.around(positionTable,decimals=6) 
     #Remove duplicates
     positionTable = np.unique(positionTable,axis=0)
-    #positions = np.array(positionTable,dtype=np.dtype(float))[:,[1,2,3]]
-    #positionTable = convertToPosition(positionTable,a,b,c,alpha,beta,gamma)
-
-    #Generate empty density
-   # ff = np.zeros((hShape[1]-hShape[0],kShape[1]-kShape[0],lShape[1]-lShape[0]))
-
-   # for h in range(0,np.abs(hShape[1])+np.abs(hShape[0])):
-   #     for k in range(0,np.abs(kShape[1])+np.abs(kShape[0])):
-   #         for l in range(0,np.abs(lShape[1])+np.abs(lShape[0])):
-   #             for atom in positionTable:
-   #                 ff[h][k][l] = ff[h][k][l] + (1.0 * np.exp(-2j*np.pi*((h+hShape[0])*atom[0]+(k+kShape[0])*atom[1]+(l+hShape[0])*atom[2])))
-    #
 
     h = np.arange(hShape[0],hShape[1])
     k = np.arange(kShape[0],kShape[1])
     l = np.arange(lShape[0],lShape[1])
-    #h.shape[0]*k.shape[0]*l.shape[0]
+    #Generate all combinations of hkl
     grid = np.array(np.meshgrid(h,k,l)).T.reshape(h.shape[0]*k.shape[0]*l.shape[0],3,order="C")
-    #Generate empty density
-    ff2 = np.full((len(positionTable),h.shape[0]*k.shape[0]*l.shape[0],1), 0.+0.j)
-    VFunc = np.vectorize(SF)
+    #Generate empty struture factor density
+    ff = np.full((len(positionTable),h.shape[0]*k.shape[0]*l.shape[0],1), 0.+0.j)
+    #Apply vecSF across axis for all hkl's calculating all contributions of atoms for each hkl
+    ff = np.apply_along_axis(vecSF,1,positionTable,*[grid])
+    #Sum for all atoms
+    ff = np.sum(ff,axis=0)
+    ff[np.argmax(ff)] = 0.0
 
-    for atom in range(0,len(positionTable)):
-        temp = VFunc(grid,positionTable[atom])
-        t1 = np.multiply(temp[:,[0]],temp[:,[1]],casting='same_kind')
-        ff2[atom] = np.multiply(t1,temp[:,[2]],casting='same_kind')
-        #ff2[atom] = np.prod(temp,axis=1)
-    #
-    ff2 = np.sum(ff2,axis=0).reshape(h.shape[0],k.shape[0],l.shape[0],order="F")
-    #ff2 = np.flip(ff2,0)
-    ff2 = np.flip(ff2,2)
-
-
+    #list of structure factors for hkl
+    #sf = np.append(grid,ff,axis=1)
     #print(a,b,c,alpha,beta,gamma,sg)
 
-    #ff2r = ff2.real
-    #ff2r = np.fft.fftn(ff2).real
-    
-    ff2 = np.multiply(ff2.real,ff2.real)
-    ff2 = ff2/np.amax(ff2)
-    #ff1r = np.fft.ifftn(ff).real
+    #calculatePowderPattern(sf,180.0,0.01,a,b,c,alpha,beta,gamma,cT)
+    #Reshape for grid
+    ff = ff.reshape(h.shape[0],k.shape[0],l.shape[0],order="F")
+    #struct = SFtoStruct(ff)
+    #Square struture factors
+    ff= np.multiply(ff.real,ff.real)
+    #Normalise
+    ff = ff/np.amax(ff)
 
-    #ff = np.multiply(ff,ff)
-    #ff = ff/np.amax(ff)
+    return ff,sg,a,b,c,alpha,beta,gamma
 
-    return ff2,sg
+
+
+def calculatePowderPattern(sf,_2thetalim,incr,a,b,c,alpha,beta,gamma,cT):
+    # sf = h,k,l,F
+    #remove f(000) reflection
+    sf = np.delete(sf,np.argmax(sf[:,[3]]),0)
+    #Create Empty pattern
+    pattern = np.zeros((int(_2thetalim/incr),1))
+    #Convert hkl into d spacing
+    d = convertHKL2D(sf[:,[0]],sf[:,[1]],sf[:,[2]],a,b,c,alpha,beta,gamma,cT).real
+    #Calculate 2theta from d spacing
+    _2theta = d22theta(d,0.4).real
+    #APPENDING COMPLEX NUMBERS TO ARRAY MAKES EVERYTHING COMPLEX
+    for i in range(0,_2theta.shape[0]):
+        pos = int(np.round(_2theta[i].real/incr))
+        pattern[pos] = np.abs(sf[i,[3]].real)
+    writeHKL(sf,d,_2theta)
+    _2thetaAxis = np.arange(0,_2thetalim,incr)
+    plt.plot(_2thetaAxis,pattern)
+    plt.show()
+
+def SFtoStruct(sf):
+    sf = np.fft.fftshift(sf)
+    sf = np.fft.fftn(sf).real
+    return np.rot90(sf)
 
 def SF(ml,atom):
-    return (np.exp(-2j*np.pi*(ml*atom)))
+    return (np.exp(-2.0j*np.pi*(ml*atom)))
 
-def vecSF(positionTable):
-        print(positionTable)
-        h = np.arange(-15,15)
-        k = np.arange(-15,15)
-        l = np.arange(-15,15)
-        #h.shape[0]*k.shape[0]*l.shape[0]
-        grid = np.array(np.meshgrid(h,k,l)).T.reshape(h.shape[0]*k.shape[0]*l.shape[0],3,order="C")
-        VFunc = np.vectorize(SF)
-
-        temp = VFunc(grid,positionTable)
-        t1 = np.multiply(temp[:,[0]],temp[:,[1]],casting='same_kind')
-        return np.multiply(t1,temp[:,[2]],casting='same_kind')
-        #ff2[atom] = np.prod(temp,axis=1)
-
+def vecSF(atom,grid):
+    VFunc = np.vectorize(SF)
+    temp = VFunc(grid,atom)
+    t1 = np.multiply(temp[:,[0]],temp[:,[1]],casting='same_kind')
+    return np.multiply(t1,temp[:,[2]],casting='same_kind')
 
 def genrateTrainingData(num,funcParams):
 
@@ -514,12 +560,11 @@ def genrateTrainingData(num,funcParams):
     dataLabel = []
 
     for i in range(0,num):
-        print(i)
         if i % 100 == 0:
             print(i)
         item = buildSF3D(*funcParams)
         dataFeat.append(item[0])
-        dataLabel.append(item[1])
+        dataLabel.append(np.array([item[1],item[2],item[3],item[4],item[5],item[6],item[7]]))
 
     dataFeat = np.array(dataFeat)
     dataLabel = np.array(dataLabel)
@@ -579,28 +624,31 @@ def buildModelDense(input_shape,num_classes):
     model.add(keras.layers.Dense(35000,input_dim=13500,activation='sigmoid'))
     model.add(keras.layers.Dense(12000,activation='sigmoid'))
     model.add(keras.layers.Dense(1000,activation='sigmoid'))
-    model.add(keras.layers.Dense(59,activation='sigmoid'))
+    model.add(keras.layers.DensapplyMultiPospee(59,activation='sigmoid'))
 
     
     return model
 
 
+def writeHKL(data,d,_2theta):
+    print(data.shape)
+    out = open("out.hkl","w")
+    for i in range(0,data.shape[0]):
+        out.write(str(int(data[i][0].real))+"  "+str(int(data[i][1].real))+"  "+str(int(data[i][2].real))+"  "+str(data[i][3].real)+"  "+str(data[i][3].imag)+"  "+str(np.abs(data[i][3].real))+"  "+str(d[i])+"  "+str(_2theta[i])+"\n")
 
 
 sgInfo = readSGLib()
-
-
-
-
 """
-ff,dd,s,a,b,c,alpha,beta,gamma = buildSF3D([0,15],[-15,15],[-15,15],sgInfo,4,1)
-print(ff.shape)
-writeGRD(dd.shape,dd,"density_cubic",a,b,c,alpha,beta,gamma)
+dd,s,a,b,c,alpha,beta,gamma = buildSF3D([-15,16],[-15,16],[-15,16],sgInfo)
+writeGRD(dd.shape,dd,"density",a,b,c,alpha,beta,gamma,Setting=0)
+#writeGRD(ff.shape,ff,"struct",a,b,c,alpha,beta,gamma,Setting=1)
+
+#writeHKL(dd,[0,15],[-15,15],[-15,15])
 #
-writeGRD(ff.shape,ff,"reciprocal_cubic",a,b,c,alpha,beta,gamma)
+#writeGRD(ff.shape,ff,"reciprocal_cubic",a,b,c,alpha,beta,gamma)
 
 """
-genrateTrainingData(30000,[[0,15],[-15,15],[-15,15],sgInfo,2,1])
+genrateTrainingData(10000,[[0,15],[-15,15],[-15,15],sgInfo,2,1])
 
 """
 feat = np.load("feat.npy")
