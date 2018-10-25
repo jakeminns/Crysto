@@ -223,22 +223,6 @@ def readSGLib():
                 index.append(item[0])
 
     return sgData
-        
-def gkern2D(kernlen=21, nsig=3):
-
-    """Returns a 2D Gaussian kernel array."""
-    # create nxn zeros
-    inp = np.zeros((kernlen, kernlen))
-    # set element at the middle to one, a dirac delta
-    inp[kernlen//2, kernlen//2] = 1
-    # gaussian-smooth the dirac, resulting in a gaussian filter mask
-    guass = fi.gaussian_filter(inp, nsig)/kernlen
-    max1 = np.amax(guass)
-    gauss = guass/max1
-    return gauss
-
-def lookUpAtomType(type):
-    return 1.0
 
 def gkern3D(atomType,kernlen, nsig):
     """Returns a 2D Gaussian kernel array."""
@@ -313,7 +297,11 @@ def randomCell(cT = None,sG=None,A=None,B=None,C=None,Alpha=None,Beta=None,Gamma
     
     a,b,c,alpha,beta,gamma = 0.0,0.0,0.0,0.0,0.0,0.0
     sg = 0
-    sg = np.random.randint(low=0,high=230)
+
+    if sG != None:
+        sg = sG
+    else:
+        sg = np.random.randint(low=0,high=230)
 
     if sg>=0 and sg<2:
         cT=0
@@ -381,8 +369,7 @@ def randomCell(cT = None,sG=None,A=None,B=None,C=None,Alpha=None,Beta=None,Gamma
         print("Incorrect Cell Type Chosen")
         sys.exit()   
 
-    if sG != None:
-        sg = sG
+
     
     if A != None:
         a = A
@@ -403,6 +390,7 @@ def randomCell(cT = None,sG=None,A=None,B=None,C=None,Alpha=None,Beta=None,Gamma
     return a,b,c,alpha,beta,gamma,sg,cT
 
 def convertToPosition(positionTable,a,b,c,alpha,beta,gamma):
+
     #positionTable = np.array(positionTable)
     rad = np.pi/180.0
     omega = a*b*c*(1-(np.cos(alpha*rad)**2)-(np.cos(beta*rad)**2)-(np.cos(gamma*rad)**2)+2*np.cos(alpha*rad)*np.cos(beta*rad)*np.cos(gamma*rad))**0.5
@@ -412,7 +400,99 @@ def convertToPosition(positionTable,a,b,c,alpha,beta,gamma):
         out.append(np.matmul(np.array(i).transpose(),convertArr).tolist())
 
     return out
+def quadraticBragg(h,k,l,a,b,c,alpha,beta,gamma,cT,lambda_):
+    print("QUAD",cT)
+    print(h[0],k[0],l[0])
+    rad = np.pi/180.0
 
+    if cT == 0:
+        V = a*b*c*(1+2*np.cos(rad*alpha)*np.cos(rad*beta)*np.cos(rad*gamma)-(np.cos(alpha*rad)**2.0)-(np.cos(beta*rad)**2.0)-(np.cos(gamma*rad)**2.0))**0.5
+
+        aS = (1/V)*b*c*np.sin(rad*alpha)
+        cosAS = (np.cos(beta*rad)*np.cos(gamma*rad)-np.cos(alpha*rad))/(np.sin(rad*beta)*np.sin(rad*gamma))
+
+        bS = (1/V)*a*c*np.sin(rad*beta)
+        cosBS = (np.cos(gamma*rad)*np.cos(alpha*rad)-np.cos(beta*rad))/(np.sin(rad*gamma)*np.sin(rad*alpha))
+
+        cS = (1/V)*a*b*np.sin(rad*gamma)
+        cosGS = (np.cos(alpha*rad)*np.cos(beta*rad)-np.cos(gamma*rad))/(np.sin(rad*alpha)*np.sin(rad*beta))
+
+        const = (lambda_**2.0)/(4.0)
+        hkl = np.multiply(np.power(h,2,0),aS**2.0)+np.multiply(np.power(k,2,0),bS**2.0)+np.multiply(np.power(l,2,0),cS**2.0)+(2.0*np.multiply(k,l)*bS*cS*cosAS)+(2.0*np.multiply(l,h)*cS*aS*cosBS)+(2.0*np.multiply(l,h)*cS*aS*cosBS)+(2.0*np.multiply(h,k)*aS*bS*cosGS)
+        _2t = np.multiply(const,hkl)
+        _2t = np.arcsin(np.power(_2t,0.5))
+
+    elif cT==1:
+        const = (lambda_**2.0)/(4.0)
+        print("aaaa",a,b,c,beta,a*b*c*(1+2*np.cos(rad*alpha)*np.cos(rad*beta)*np.cos(rad*gamma)-(np.cos(alpha*rad)**2.0)-(np.cos(beta*rad)**2.0)-(np.cos(gamma*rad)**2.0))**0.5)
+
+        h_ = np.divide(np.power(h,2.0),np.multiply((a**2.0),np.power(np.sin(beta*rad),2.0)))
+        print("h",h_)
+        k_ = np.divide(np.power(k,2.0),b**2.0)
+        print("k",k_)
+        l_ = np.divide(np.power(l,2.0),np.multiply((c**2.0),np.power(np.sin(beta*rad),2.0)))
+        print("l",l_)
+        a_ = np.divide((2.0*np.multiply(h,l))*np.cos(rad*beta),(a*c*(np.power(np.sin(beta*rad),2.0))))
+        print("a",a_)
+        hkl = h_+k_+l_-a_
+        print("hkl",hkl)
+        print("COSNT",const)
+        _2t = np.multiply(const,hkl)
+        print("MUL",_2t)
+        _2t = np.arcsin(np.power(_2t,0.5))
+        print("2t",_2t)
+    elif cT==2:
+        const = (lambda_**2.0)/(4.0)
+        hkl = np.divide(np.power(h,2.0),a**2.0)+np.divide(np.power(k,2.0),b**2.0)+np.divide(np.power(l,2.0),c**2.0)
+        _2t = np.multiply(const,hkl)
+        _2t = np.arcsin(np.power(_2t,0.5))
+    elif cT==3:
+
+        const = (lambda_**2.0)/(4.0)
+        const2 = 1.0/(a**2.0)
+        hkl = (np.power(h,2.0)+np.power(k,2.0)+(np.multiply((a/c)**2.0,np.power(l,2.0))))
+        hkl = np.multiply(const2,hkl)
+        _2t = np.multiply(const,hkl)
+        _2t = np.arcsin(np.power(_2t,0.5))
+
+    elif cT==4 or cT==5:
+
+        const = (lambda_**2.0)/(4.0)
+        const2 = 1.0/(a**2.0)
+        hkl = np.multiply((4.0/3.0),(np.power(h,2.0)+np.power(k,2.0)+np.multiply(h,k)))+(np.multiply((a/c)**2.0,np.power(l,2.0)))
+        hkl = np.multiply(const2,hkl)
+        _2t = np.multiply(const,hkl)
+        _2t = np.arcsin(np.power(_2t,0.5))
+
+    elif cT==9:
+        const = (lambda_**2.0)/(4.0)
+
+        hkl = (np.power(h,2.0)+np.power(k,2.0)+np.power(l,2.0))
+        hkl2 = np.multiply(h,k)+np.multiply(k,l)+np.multiply(h,l)
+        hklTop = np.multiply(hkl,np.sin(rad*gamma)**2.0)+np.multiply((2.0*hkl2),(np.cos(gamma*rad)**2.0))-np.cos(gamma*rad)
+        hklBot = (a**2.0)*(1-(3*np.cos(rad*gamma)**2.0)+(2.0*np.cos(gamma*rad)**3.0))
+        hkl = np.divide(hklTop,hklBot)
+        _2t = np.multiply(const,hkl)
+        _2t = np.arcsin(np.power(_2t,0.5))
+
+
+    elif cT==6:
+
+        const = (lambda_**2.0)/(4.0)
+        const2 = 1.0/(a**2.0)
+        hkl = (np.power(h,2.0)+np.power(k,2.0)+np.power(l,2.0))
+        hkl = np.multiply(const2,hkl)
+
+        _2t = np.multiply(const,hkl)
+        _2t = np.arcsin(np.power(_2t,0.5))
+
+    else:
+        print("Incorrect Cell Type Chosen")
+        sys.exit()  
+    for i in range(0,100):
+        print(h[i],k[i],l[i], np.power(np.divide(1.0,hkl[i]),0.5),np.power(np.multiply(const,hkl[i]),0.5),_2t[i]) 
+#np.power(np.divide(1.0,hkl),0.5)
+    return np.power(np.divide(1.0,hkl),0.5),(180.0/np.pi)*_2t
 
 def convertHKL2D(h,k,l,a,b,c,alpha,beta,gamma,cT):
 
@@ -423,78 +503,73 @@ def convertHKL2D(h,k,l,a,b,c,alpha,beta,gamma,cT):
         sys.exit()  
     elif cT==1:
         d = (1.0/np.sin(beta*rad)**2.0)*(((h**2.0)/(a**2.0))+(((k**2.0)*np.sin(rad*beta)**2.0)/(b**2.0))+((l**2.0)/(c**2.0))-((2.0*h*l*np.cos(beta*rad))/a*c))
-        return (1.0/d)**0.5
+        print("d",d)
+
+        d= (1.0/d)**0.5
     elif cT==2:
         d = ((h**2.0)/(a**2.0))+((k**2.0)/(b**2.0))+((l**2.0)/(c**2.0))
-        return (1.0/d)**0.5
+        print("d",d)
+        d= (1.0/d)**0.5
     elif cT==3:
         d = (((h**2.0)+(k**2.0))/a**2.0)+((l**2.0)/(c**2.0))
-        return (1.0/d)**0.5
+        print("d",d)
+
+        d=(1.0/d)**0.5
     elif cT==4:
         print("No HKL to D caluclated yet")
         sys.exit()  
     elif cT==5:
         d = (4.0/3.0)*(((h**2.0)+h*k+(k**2.0))/(a**2.0))+((l**2.0)/(c**2.0))
-        return (1/d)**0.5
+        d= (1/d)**0.5
     elif cT==6:
         d = ((h**2)+(k**2)+(l**2))/(a**2)
-        return (1/d)**0.5
+        d= (1/d)**0.5
     else:
         print("Incorrect Cell Type Chosen")
         sys.exit()   
 
+    print("dffff",d)
+
+    return d
 def d2theta(d,lambd):
     #check for non numbers
     d = np.nan_to_num(d)
-    
-
-    return (180.0/np.pi)*np.arcsin(lambd/(2.0*d))
+    d = (180.0/np.pi)*np.arcsin(lambd/(2.0*d))
+    print("thetaaaa",d)
+    return d
 
 def buildSF3D(hShape,kShape,lShape,sgInfo,asfInfo):
+
     lambda_ = 0.4
-    #a,b,c,alpha,beta,gamma,sg,cT = randomCell(cT=6,A=10.0, B=10.0,C=10.0,Alpha= 90.0,Beta= 90.0,Gamma= 90.0,sG=226)
+    a,b,c,alpha,beta,gamma,sg,cT = randomCell(A=22.59827208128997,B= 22.59827208128997,C= 12.59827208128997,Alpha= 90.0,Beta= 90.0,Gamma= 120.0,sG= 150)
     #Generaate lattice parameters and space group
-    a,b,c,alpha,beta,gamma,sg,cT = randomCell()
+    #a,b,c,alpha,beta,gamma,sg,cT = randomCell(sG=170)
     #Initilise postion table
     positionTable = []
     #for a random amount of atom assign a random position
     for atom in range(0,np.random.randint(1,4)):
-        positionTable.append(["0",str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0])])
+        positionTable.append(["10",str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0])])
     #positionTable = [["10","0.0","0.0","0.0"],["10","0.123","0.321","0.231"]]
     #positionTable = [["10","0.0","0.0","0.0"]]
-
+    positionTable = [['10', '0.17421616359686776', '0.009086319277717747', '0.616727098909161']]
+    print("params",a,b,c,alpha,beta,gamma,sg,cT)
+    print("pos",positionTable)
     #build a list of symmetry operators and centering operations  
     sym = sgInfo[sg][3:][0]
     cen = sgInfo[sg][4:][0]
     laue = sgInfo[sg][2][0]
     name = sgInfo[sg][1][0]
+
     centMulti = [['x','y','z'],['x+1','y+1','z+1'],['x+1','y+1','z'],['x+1','y','z+1'],['x+1','y','z'],['x','y+1','z+1'],['x','y+1','z'],['x','y','z+1']]
     #Apply symmetry operations
-    #positionTable = applyMultiPos(positionTable)
-
-
     positionTable = buildAndApplySymmetryOpperations(positionTable,cen)
-    #positionTable = (buildAndApplySymmetryOpperations(positionTable,centMulti))
 
     positionTable = (buildAndApplySymmetryOpperations(positionTable,sym))
-    #positionTable = (buildAndApplySymmetryOpperations(positionTable,cen))
 
     #Apply centering operations
     positionTable = np.array(positionTable,dtype=np.dtype(float))
     atomType = positionTable[:,[0]]
     positionTable = positionTable[:,[1,2,3]]%1
-    #flatten array to find index of items equal to 1 or -1
-    #flat = positionTable.flatten()
-    #filter_ = flat != 1.
-    #filterNeg_ = flat!=-1.
-    #Combine 1 and -1 filters
-    #filter_ = np.logical_and(filter_,filterNeg_)
-    #Modulo 1 for all items except those in filter
-    #flat2 = flat[filter_]%1
-    #Substitute modulo 1 array into original
-    #flat[filter_] = flat2 
-    #Reshape array
-    #positionTable = flat.reshape(positionTable.shape)
 
     positionTable = np.append(atomType,positionTable,axis=1)
     #Find absolute
@@ -503,8 +578,6 @@ def buildSF3D(hShape,kShape,lShape,sgInfo,asfInfo):
     positionTable = np.around(positionTable,decimals=6) 
     #Remove duplicates
     positionTable = np.unique(positionTable,axis=0)
-    #atomType = positionTable[:,[0]]
-    #positionTable = positionTable[:,[1,2,3]]
 
     h = np.arange(hShape[0],hShape[1])
     k = np.arange(kShape[0],kShape[1])
@@ -512,78 +585,69 @@ def buildSF3D(hShape,kShape,lShape,sgInfo,asfInfo):
     #Generate all combinations of hkl
     grid = np.array(np.meshgrid(h,k,l)).T.reshape(h.shape[0]*k.shape[0]*l.shape[0],3,order="C")
     #Generate empty struture factor density
-    #ff = np.full((h.shape[0]*k.shape[0]*l.shape[0],1), 0.0)
     ff = np.full((len(positionTable),h.shape[0]*k.shape[0]*l.shape[0],1), 0.0+0.0j)
-
-    #Apply vecSF across axis for all hkl's calculating all contributions of atoms for each hkl
-    #theta = d2theta(convertHKL2D(grid[:,[0]],grid[:,[1]],grid[:,[2]],a,b,c,alpha,beta,gamma,cT),lambda_)
-    ff = np.apply_along_axis(vecSF,1,positionTable,*[grid,atomType,asfInfo,lambda_])
+    print(grid)
+    d,theta = quadraticBragg(grid[:,[0]],grid[:,[1]],grid[:,[2]],a,b,c,alpha,beta,gamma,cT,lambda_)
+    print("here",theta)
+    #Apply calcSF across axis for all hkl's calculating all contributions of atoms for each hkl
+    ff = np.apply_along_axis(calcSF,1,positionTable,*[grid,atomType,theta,asfInfo,lambda_])
     #Sum for all atoms
-    
     ff = np.sum(ff,axis=0)
-    #ff[np.argmax(ff)] = 0.0
+
+    ff[np.argmax(ff)] = 0.0
     
-    #LP = LPCorrection(theta*2)
-    #LP = np.nan_to_num(LP)
-    #ff = np.multiply(LP,ff,casting='same_kind')
+    LP = LPCorrection(theta*2)
+    LP = np.nan_to_num(LP)
+    ff = np.multiply(LP,ff,casting='same_kind')
     
     ff= np.abs(ff.real)
-
-    #Normalise
-    #ff = np.abs(ff)
-    #list of structure factors for hkl
-
     ff = ff/np.amax(ff)
+    writeHKL(grid,ff,d,theta,LP)
+    calculatePowderPattern(grid,ff,180.0,0.01,a,b,c,alpha,beta,gamma,cT,LP)
 
-    #sf = np.append(grid,ff,axis=1)
-    #print(a,b,c,alpha,beta,gamma,sg)
-    #calculatePowderPattern(sf,180.0,0.01,a,b,c,alpha,beta,gamma,cT,LP)
     #Reshape for grid
     ff = ff.reshape(h.shape[0],k.shape[0],l.shape[0],order="C")
-    #ff = SFtoStruct(ff)
-    #Square struture factors
 
     return ff,sg,a,b,c,alpha,beta,gamma
 
 
 
-def calculatePowderPattern(sf,_2thetalim,incr,a,b,c,alpha,beta,gamma,cT,LP):
+def calculatePowderPattern(grid,ff,_2thetalim,incr,a,b,c,alpha,beta,gamma,cT,LP):
+    
+    sf = np.append(grid,ff,axis=1)
     # sf = h,k,l,F
     #remove f(000) reflection
     #sf = np.delete(sf,np.argmax(sf[:,[3]]),0)
     multi = np.zeros((sf.shape[0],1))
     #Create Empty pattern
     pattern = np.zeros((int(_2thetalim/incr),1))
-    #patternCount = np.zeros((int(_2thetalim/incr),1))
     #Convert hkl into d spacing
-    d = convertHKL2D(sf[:,[0]],sf[:,[1]],sf[:,[2]],a,b,c,alpha,beta,gamma,cT).real
+ #   d = convertHKL2D(sf[:,[0]],sf[:,[1]],sf[:,[2]],a,b,c,alpha,beta,gamma,cT).real
     #Calculate 2theta from d spacing
-    _2theta = d2theta(d,0.4).real*2.0
+    d,_2theta= quadraticBragg(sf[:,[0]],sf[:,[1]],sf[:,[2]],a,b,c,alpha,beta,gamma,cT,0.4)
+    _2theta = _2theta.real*2.0 
+    #_2theta = np.nan_to_num(_2theta)
     #APPENDING COMPLEX NUMBERS TO ARRAY MAKES EVERYTHING COMPLEX
     for i in range(0,_2theta.shape[0]):
         pos = int(np.round(_2theta[i].real/incr))
         pattern[pos] = pattern[pos] + (sf[i,[3]][0].real)
-      #  if((sf[i,[3]][0].real)>0.01):
-      #      print(sf[i,[3]][0].real)
-      #      patternCount[pos] = patternCount[pos] + 1
 
-    writeHKL(sf,d,_2theta,LP)
+    #writeHKL(sf,d,_2theta,LP)
+
     _2thetaAxis = np.arange(0,_2thetalim,incr)
-    #plt.plot(_2thetaAxis,patternCount)
+    writePowderPlot(_2thetaAxis,pattern)
     plt.plot(_2thetaAxis,pattern)
-
     plt.show()
 
 def SFtoStruct(sf):
     sf = np.fft.fftshift(sf)
-    sf = np.fft.fftn(sf).real
+    sf = np.fft.fftn(sf).real1
     return (sf)
+def writePowderPlot(axis,intensity):
+    file_ = open("plot.dat","w")
 
-def SF(ml,atom):
-   # return (np.exp(-2.0j*np.pi*(ml*atom)))
-    #print(float(ml),atom,-2.0*np.pi*(float(ml)*atom))
-    return np.exp((-2.0j*np.pi*(float(ml)*atom)))
-
+    for theta, int_ in zip(axis,intensity):
+        file_.write(str('{:06f}'.format(theta))+"   "+str('{:06f}'.format(int_[0]))+"\n")
 def generateAtomicScateringFactors():
     file_ = np.genfromtxt("atf.txt",unpack=True).T
     return file_
@@ -591,35 +655,32 @@ def generateAtomicScateringFactors():
 def calculateAtomicScatteringFactor(file_,element,theta,lambda_):
     params = file_[element][1:9]
     rad = np.pi/180.0
-    print("PArams",params)
+
     params = params.reshape(4,2)
     c = file_[element][9]
     theta1 = np.sin(theta*rad)/lambda_
+
     expo = np.power(theta1,2.0)
     expo = -np.outer(params[:,[1]],expo).T
     f = np.exp(expo).dot(params[:,[0]])
     f = f + c
-    print(np.append(theta,f,axis=1))
     return f
+
 def LPCorrection(theta):
     rad = np.pi/180.0
     return np.divide((1+np.cos(2*rad*theta)**2),np.multiply(np.cos(theta*rad),np.sin(theta*rad)**2))
-def vecSF(atom,grid,atomType,asfInfo,lambda_):
+
+def calcSF(atom,grid,atomType,theta,asfInfo,lambda_):
     #VFunc = np.vectorize(SF)
     atomType = int(atom[0])
     pos = atom[1:]
-    #asf = calculateAtomicScatteringFactor(asfInfo,atomType,theta,lambda_)
-    #asf = asf.reshape(asf.shape[0],1)
-    #print("uf",grid[:,[0]],pos[0])
-    #temp = VFunc(grid,pos)
-    #t1 = np.multiply(temp[:,[0]],temp[:,[1]],casting='same_kind')
-    #t1 = np.multiply(t1,temp[:,[2]],casting='same_kind')
-    #print(t1)
+
+    asf = calculateAtomicScatteringFactor(asfInfo,atomType,theta,lambda_)
+    asf = asf.reshape(asf.shape[0],1)
+    
     t1 = np.cos(np.multiply(-2.0*np.pi,(np.multiply(grid[:,[0]],pos[0])+np.multiply(grid[:,[1]],pos[1])+np.multiply(grid[:,[2]],pos[2]))))
 
-   # asf = 
-   # t1 = t1*asf
-    #t1 = np.multiply(asf,t1,casting='same_kind')
+    t1 = np.multiply(asf,t1,casting='same_kind')
 
     return t1
 
@@ -641,7 +702,6 @@ def genrateTrainingData(num,funcParams):
     np.save("feat.npy",dataFeat)
     np.save("label.npy",dataLabel)
 
-
 def buildModelConv(input_shape,num_classes):
     
     model = keras.Sequential()
@@ -651,14 +711,14 @@ def buildModelConv(input_shape,num_classes):
     #model.add(keras.layers.BatchNormalization())
     #model.add(keras.layers.Dropout(0.25))
     model.add(keras.layers.MaxPooling3D(pool_size=(2, 2,2),data_format= keras.backend.image_data_format()))
-#    
+    #    
     model.add(keras.layers.Conv3D(12, (3,3, 3),padding="same",data_format= keras.backend.image_data_format()))
     model.add(keras.layers.BatchNormalization())
     model.add(keras.layers.Activation('relu'))
     #model.add(keras.layers.Dropout(0.25))
     model.add(keras.layers.MaxPooling3D(pool_size=(2, 2,2),data_format= keras.backend.image_data_format()))
    # model.add(keras.layers.Dropout(0.25))
-##    
+    ##    
     #model.add(keras.layers.Conv3D(64, (3,3,3),data_format= K.image_data_format()))
     #model.add(keras.layers.BatchNormalization())
     #model.add(keras.layers.Activation('relu'))
@@ -695,22 +755,22 @@ def buildModelDense(input_shape,num_classes):
     model.add(keras.layers.Dense(1000,activation='sigmoid'))
     model.add(keras.layers.DensapplyMultiPospee(59,activation='sigmoid'))
 
-    
     return model
 
 
-def writeHKL(data,d,_2theta,LP):
-    print(data.shape)
+def writeHKL(grid,ff,d,theta,LP):
+
     out = open("out.hkl","w")
-    for i in range(0,data.shape[0]):
-        out.write(str(int(data[i][0].real))+"  "+str(int(data[i][1].real))+"  "+str(int(data[i][2].real))+"  "+str(data[i][3].real)+"  "+str(data[i][3].imag)+"  "+str(np.abs(data[i][3].real))+"  "+str(d[i])+"  "+str(_2theta[i])+"  "+str(LP[i])+"\n")
+    out.write("#  h    k    l     |F|        d       2theta       LP   \n")
+    for i in range(0,grid.shape[0]):
+        out.write("  "+str('{:3d}'.format(int(grid[i][0])))+"  "+str('{:3d}'.format(int(grid[i][1])))+"  "+str('{:3d}'.format(int(grid[i][2])))+"  "+str('{:06f}'.format(ff[i][0].real))+"  "+str('{:06f}'.format(d[i][0]))+"  "+str('{:06f}'.format(theta[i][0]))+"  "+str('{:06f}'.format(LP[i][0]))+"\n")
 
 
 sgInfo = readSGLib()
 asfInfo = generateAtomicScateringFactors()
 
-"""
-dd,s,a,b,c,alpha,beta,gamma = buildSF3D([-15,16],[-15,16],[-15,16],sgInfo,asfInfo)
+
+dd,s,a,b,c,alpha,beta,gamma = buildSF3D([-10,10],[-10,10],[-10,10],sgInfo,asfInfo)
 writeGRD(dd.shape,dd,"density",a,b,c,alpha,beta,gamma,Setting=0)
 #writeGRD(ff.shape,ff,"struct",a,b,c,alpha,beta,gamma,Setting=1)
 
@@ -722,7 +782,7 @@ writeGRD(dd.shape,dd,"density",a,b,c,alpha,beta,gamma,Setting=0)
 
 genrateTrainingData(10000,[[0,15],[-15,15],[-15,15],sgInfo,asfInfo])
 
-"""
+
 feat = np.load("feat.npy")
 label = np.load("label.npy")
 #print(feat.shape,label.shape)
