@@ -1,0 +1,141 @@
+
+
+        **********************************************************
+        ** PROGRAM FullProf.2k (Version 6.20 - Jan2018-ILL JRC) **
+        **********************************************************
+                       M U L T I -- P A T T E R N                 
+            Rietveld, Profile Matching & Integrated Intensity     
+                 Refinement of X-ray and/or Neutron Data
+
+
+    Date: 07/11/2018  Time: 13:13:14.250                              
+
+ => PCR file code: plot
+ => DAT file code: plot.dat             -> Relative contribution: 1.0000                                                            
+ => Title: data_Diffuse_300K_Full_Sphere_Scan
+
+ ==> CONDITIONS OF THIS RUN FOR PATTERN No.:  1
+
+ => Global Refinement of X-ray powder diffraction data                                                                              
+ => Global Refinement of X-ray powder diffraction data                                                                              
+    Bragg-Brentano(X-rays) or Debye-Scherrer geometry(Neutrons)
+ => The    5th default profile function was selected
+
+ => X-Y type of data: 2theta/TOF/E(Kev) Intens sigma for pattern:  1
+ => Wavelengths:  0.40000 0.40000
+ => Cos(Monochromator angle)=   0.9100
+ => Absorption correction (AC), muR-eff =   0.0000  0.0000
+ => Base of peaks: 2.0*HW*    8.00
+ ==> Angular range, step and number of points:
+     2Thmin:       0.060000  2Thmax:     179.990005  Step:       0.010001  No. of points:  17994
+ =>-------> Pattern#  1
+ => Crystal Structure Refinement for phase: 1
+ => The density (volumic mass) of phase 1 is:    3.229 g/cm3
+ => Scor: 4.4607
+
+ ==> RESULTS OF REFINEMENT:
+
+
+ => No. of fitted parameters:    8
+
+
+------------------------------------------------------------------------------
+ => Phase No.  1 data_Diffuse_300K_Full_Sphere_Scan      I 4/m               
+------------------------------------------------------------------------------
+
+ =>  No. of reflections for pattern#:   1: 32331  
+
+
+ ==> ATOM PARAMETERS:
+
+  Name      x     sx       y     sy       z      sz      B   sB   occ. socc.  Mult
+ Pb1     0.00000(   0)  0.00000(   0)  0.00000(   0)  1.000(  0)  0.125(  0)    2
+ Pb2    -0.50000(   0) -0.50000(   0)  0.00000(   0)  1.000(  0)  0.125(  0)    2
+ ZI3    -0.20900(   0) -0.29500(   0)  0.00000(   0)  1.000(  0)  0.225(  0)    8
+ I1      0.00000(   0)  0.00000(   0)  0.25280(   0)  1.000(  0)  0.250(  0)    4
+ N1      0.07300(   0)  0.47400(   0)  0.21800(   0)  1.000(  0)  0.250(  0)   16
+ C1      0.07300(   0)  0.47400(   0)  0.21800(   0)  1.000(  0)  0.250(  0)   16
+
+ ==> PROFILE PARAMETERS FOR PATTERN#  1
+
+ => Cell parameters      :
+                              8.80000   0.00000
+                              8.80000   0.00000
+                             12.60000   0.00000
+                             90.00000   0.00000
+                             90.00000   0.00000
+                             90.00000   0.00000
+ 
+ => overall scale factor :      0.000000039     0.000000001
+ => Eta(p-v) or m(p-vii) :    0.00001   0.00000
+ => Overall tem. factor  :    0.00000   0.00000
+ => Halfwidth parameters :    0.00413   0.00000
+                             -0.00762   0.00000
+                              0.00625   0.00000
+ => Preferred orientation:    0.00000   0.00000
+                              0.00000   0.00000
+ => Asymmetry parameters :    0.00000   0.00000
+                              0.00000   0.00000
+                              0.00000   0.00000
+                              0.00000   0.00000
+ => X and y parameters   :    0.01896   0.00000
+                              0.00000   0.00000
+ => Strain parameters    :    0.00000   0.00000
+                              0.00000   0.00000
+                              0.00000   0.00000
+ => Size parameters (G,L):    0.00000   0.00000
+                              0.00000   0.00000
+
+ ==> GLOBAL PARAMETERS FOR PATTERN#  1
+
+
+ => Zero-point:    -0.0208    0.0006
+ => Background Polynomial Parameters ==>
+                              0.19585     0.51027E-01
+                               2.6219     0.44565    
+                               5.1953      1.7667    
+                              -240.39      7.1192    
+                              -693.33      21.008    
+                              -524.42      15.100    
+ 
+ => Cos( theta)-shift parameter :   0.0000  0.0000
+ => Sin(2theta)-shift parameter :   0.0000  0.0000
+
+ ==> RELIABILITY FACTORS WITH ALL NON-EXCLUDED POINTS FOR PATTERN:  1
+
+  => Cycle: 10 => MaxCycle: 10
+ => N-P+C:  4791
+ =>  R-factors (not corrected for background) for Pattern:  1
+ => Rp:  39.8     Rwp:  46.9     Rexp:   27.90 Chi2:  2.82      L.S. refinement
+ => Conventional Rietveld R-factors for Pattern:  1
+ => Rp:  67.0     Rwp:  65.6     Rexp:   39.05 Chi2:  2.82    
+ => Deviance:  0.196E+05     Dev*  :   3.442    
+ => DW-Stat.:    0.0556     DW-exp:     1.9137
+ => N-sigma of the GoF:   89.070
+
+ ==> RELIABILITY FACTORS FOR POINTS WITH BRAGG CONTRIBUTIONS FOR PATTERN:  1
+
+ => N-P+C:  4713
+ =>  R-factors (not corrected for background) for Pattern:  1
+ => Rp:  39.3     Rwp:  46.9     Rexp:   28.96 Chi2:  2.62      L.S. refinement
+ => Conventional Rietveld R-factors for Pattern:  1
+ => Rp:  64.2     Rwp:  63.9     Rexp:   39.46 Chi2:  2.62    
+ => Deviance:  0.178E+05     Dev*  :   3.176    
+ => DW-Stat.:    0.0608     DW-exp:     1.9130
+ => N-sigma of the GoF:       78.745
+
+ => Global user-weigthed Chi2 (Bragg contrib.):   2.87    
+
+     -----------------------------------------------------
+     BRAGG R-Factors and weight fractions for Pattern #  1
+     -----------------------------------------------------
+
+ => Phase:  1     data_Diffuse_300K_Full_Sphere_Scan
+ => Bragg R-factor:   46.4       Vol:  975.744( 0.000)  Fract(%):  100.00( 2.03)
+ => Rf-factor=  26.2             ATZ:        1897.345   Brindley:  1.0000
+
+ 
+              CPU Time:     7.312 seconds
+                            0.122 minutes
+
+ => Run finished at:     Date: 07/11/2018  Time: 13:13:21.580                              

@@ -13,7 +13,7 @@ class CrystoGen:
         self.atomTable = self.randomAtoms(AtomTable)
         self.sgInfo = self.readSGLib()
         self.asfInfo = self.readASF()
-
+        self.pattern = ""
         if Info:
             print("========== Crystal Info ==========")
             print("")
@@ -31,8 +31,12 @@ class CrystoGen:
                 print(atom)
             print("")
             print("=================================")
-        self.sf = self.buildSF3D(ReciprocalGen[0],ReciprocalGen[1],ReciprocalGen[2])
 
+        self.sf,self.sfComplex,self.grid,self.d,self.theta,sg,a,b,c,alpha,beta,gamma = self.buildSF3D(ReciprocalGen[0],ReciprocalGen[1],ReciprocalGen[2])
+
+        self.pattern = self.calculatePowderPattern(180.0,0.01,0.1,-0.0001,0.0001,0.001,0.5,0.001,8.0,1.0)
+
+       # self.writeHKL()
 
     def randomAtoms(self,AtomTable):
 
@@ -41,7 +45,7 @@ class CrystoGen:
             atomTable = []
 
             for atom in range(0,np.random.randint(1,4)):
-                atomTable.append(["10",str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0]),"1.0"])
+                atomTable.append(["10",str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0]),"1.0","1.0"])
 
             return atomTable
 
@@ -157,12 +161,12 @@ class CrystoGen:
     def randomCellParam(self):
         return np.random.uniform(0.5,30.0)
 
-    def buildSF3D(self,hShape,kShape,lShape,randomCell = False):
+    def buildSF3D(self,hShape,kShape,lShape,randomCell = False,FormFactor=True,TempFactor=True,LorentzP=True,Normalize=True,RemoveF000=True):
 
         sgInfo = self.sgInfo
         asfInfo = self.asfInfo
 
-        if self.randomCell == False:
+        if randomCell == False:
             a = self.a
             b = self.b
             c = self.c
@@ -175,7 +179,7 @@ class CrystoGen:
         else:
             a,b,c,alpha,beta,gamma,sg,cT=self.randomCell(None,None,None,None,None,None,None,None)
             positionTable = self.randomAtoms(None)
-
+        
         lambda_ = 0.4
         #build a list of symmetry operators and centering operations  
         sym = sgInfo[sg][3:][0]
@@ -183,16 +187,22 @@ class CrystoGen:
 
         centMulti = [['x','y','z'],['x+1','y+1','z+1'],['x+1','y+1','z'],['x+1','y','z+1'],['x+1','y','z'],['x','y+1','z+1'],['x','y+1','z'],['x','y','z+1']]
         #Apply symmetry operations
+        #positionTable = self.buildAndApplySymmetryOpperations(positionTable,centMulti)
+
         positionTable = self.buildAndApplySymmetryOpperations(positionTable,cen)
         positionTable = (self.buildAndApplySymmetryOpperations(positionTable,sym))
-
         #Apply centering operations
         positionTable = np.array(positionTable,dtype=np.dtype(float))
         atomType = positionTable[:,[0]]
-        atomISO = positionTable[:,[4]]
+        atomOcc = positionTable[:,[4]]
+        atomISO = positionTable[:,[5]]
         positionTable = positionTable[:,[1,2,3]]%1
 
+
+
         positionTable = np.append(atomType,positionTable,axis=1)
+        positionTable = np.append(positionTable,atomOcc,axis=1)
+
         positionTable = np.append(positionTable,atomISO,axis=1)
         #Find absolute
         positionTable = np.abs(positionTable)
@@ -200,47 +210,52 @@ class CrystoGen:
         positionTable = np.around(positionTable,decimals=6) 
         #Remove duplicates
         positionTable = np.unique(positionTable,axis=0)
-
+        #print(a,b,c,alpha,beta,gamma,sg,positionTable,len(positionTable))
         h = np.arange(hShape[0],hShape[1])
         k = np.arange(kShape[0],kShape[1])
         l = np.arange(lShape[0],lShape[1])
         #Generate all combinations of hkl
         grid = np.array(np.meshgrid(h,k,l)).T.reshape(h.shape[0]*k.shape[0]*l.shape[0],3,order="C")
         #Generate empty struture factor density
-        ff = np.full((len(positionTable),h.shape[0]*k.shape[0]*l.shape[0],1), 0.0+0.0j)
-        d,theta = self.quadraticBragg(grid[:,[0]],grid[:,[1]],grid[:,[2]],a,b,c,alpha,beta,gamma,cT,lambda_)
-        #theta = np.nan_to_num(theta)
-        #Apply self.calcSF across axis for all hkl's calculating all contributions of atoms for each hkl
-        ff = np.apply_along_axis(self.calcSF,1,positionTable,*[grid,atomType,theta,asfInfo,lambda_])
-        #Sum for all atoms
-        ff = np.sum(ff,axis=0)
+        ffComplex = np.full((len(positionTable),h.shape[0]*k.shape[0]*l.shape[0],1), 0.0+0.0j)
+        d,theta = self.quadraticBragg(grid[:,[0]],grid[:,[1]],grid[:,[2]],lambda_)
+        #multi = self.calculateMultiplicity()
 
-        ff[np.argmax(ff)] = 0.0
+        #Apply self.calcSF across axis for all hkl's calculating all contributions of atoms for each hkl
+        ffComplex = np.apply_along_axis(self.calcSF,1,positionTable,*[grid,atomType,theta,asfInfo,lambda_,FormFactor,TempFactor])
+        #Sum for all atoms
+        ffComplex = np.sum(ffComplex,axis=0)
+
+        if RemoveF000 == True:
+            ffComplex[np.argmax(ffComplex)] = 0.0
+             
+        ffAbs= np.absolute(ffComplex)
+        ffAbs = np.power(ffAbs,2.0)
+
+        #if LorentzP == True:
+            #ffAbs = np.multiply(LP,ffAbs,casting='same_kind')
         
-        LP = self.LPCorrection(theta*2)
-        LP = np.nan_to_num(LP)
-        ff = np.multiply(LP,ff,casting='same_kind')
-        
-        ff= np.abs(ff.real)
-        ff = ff/np.amax(ff)
-        self.writeHKL(grid,ff,d,theta*2.0,LP)
-        self.calculatePowderPattern(grid,ff,180.0,0.01,a,b,c,alpha,beta,gamma,cT,LP,0.01,-0.01,0.0001,0.001,0.5,0.001,4.0)
+        if Normalize == True:
+            ffAbs = ffAbs/np.amax(ffAbs)
+            #ffComplex = ffComplex/np.amax(ffComplex)
 
         #Reshape for grid
-        ff = ff.reshape(h.shape[0],k.shape[0],l.shape[0],order="C")
+        ffComplex = ffComplex.reshape(h.shape[0],k.shape[0],l.shape[0],order="C")
+        ffAbs = ffAbs.reshape(h.shape[0],k.shape[0],l.shape[0],order="C")
 
-        return ff,sg,a,b,c,alpha,beta,gamma
+        return ffAbs,ffComplex,grid,d,theta,sg,a,b,c,alpha,beta,gamma
 
     def buildAndApplySymmetryOpperations(self,positions, symmetryOpp):
         NewPositions=[]
         for sym in range(0,len(symmetryOpp)):
             for pos in range(0,len(positions)):
                 tempPos =[]
-                tempPos.append(positions[pos][0])
-                tempPos.append(self.applyOpperation(positions[pos],symmetryOpp[sym][0]))
-                tempPos.append(self.applyOpperation(positions[pos],symmetryOpp[sym][1]))
-                tempPos.append(self.applyOpperation(positions[pos],symmetryOpp[sym][2]))
-                tempPos.append(positions[pos][4])
+                tempPos.append(positions[pos][0]) #Atom Type
+                tempPos.append(self.applyOpperation(positions[pos],symmetryOpp[sym][0])) #X
+                tempPos.append(self.applyOpperation(positions[pos],symmetryOpp[sym][1])) #Y
+                tempPos.append(self.applyOpperation(positions[pos],symmetryOpp[sym][2])) #Z
+                tempPos.append(positions[pos][4]) #Occ
+                tempPos.append(positions[pos][5]) #Iso
                 NewPositions.append(tempPos)
         return NewPositions
 
@@ -296,7 +311,15 @@ class CrystoGen:
         file_ = np.genfromtxt("atf.txt",unpack=True).T
         return file_
 
-    def quadraticBragg(self,h,k,l,a,b,c,alpha,beta,gamma,cT,lambda_):
+    def quadraticBragg(self,h,k,l,lambda_):
+
+        a = self.a
+        b = self.b
+        c = self.c
+        alpha = self.alpha
+        beta = self.beta
+        gamma = self.gamma
+        cT = self.cT
 
         rad = np.pi/180.0
 
@@ -313,7 +336,6 @@ class CrystoGen:
             cosGS = (np.cos(alpha*rad)*np.cos(beta*rad)-np.cos(gamma*rad))/(np.sin(rad*alpha)*np.sin(rad*beta))
 
             const = (lambda_**2.0)/(4.0)
-            print(V,aS,bS,cS,cosAS,cosBS,cosGS,const)
             hkl = np.multiply(np.power(h,2.0),aS**2.0)+np.multiply(np.power(k,2.0),bS**2.0)+np.multiply(np.power(l,2.0),cS**2.0)+(2.0*np.multiply(k,l)*bS*cS*cosAS)+(2.0*np.multiply(l,h)*cS*aS*cosBS)+(2.0*np.multiply(l,h)*cS*aS*cosBS)+(2.0*np.multiply(h,k)*aS*bS*cosGS)
             #_2t = np.multiply(const,hkl)
             #_2t = np.arcsin(np.power(_2t,0.5))
@@ -381,16 +403,27 @@ class CrystoGen:
 
         return d,(180.0/np.pi)*np.divide(lambda_,np.multiply(2.0,d))
 
-    def calcSF(self,atom,grid,atomType,theta,asfInfo,lambda_):
-        atomType = int(atom[0])
+    def calcSF(self,atom,grid,atomType,theta,asfInfo,lambda_,FormFactor,TempFactor):
+        atomType = int(atom[0])        #sf = np.cos(np.multiply(-2.0*np.pi,(np.multiply(grid[:,[0]],pos[0])+np.multiply(grid[:,[1]],pos[1])+np.multiply(grid[:,[2]],pos[2]))))
+
         pos = atom[1:4]
-        atomB =atom[4]
-        asf = self.calculateAtomicScatteringFactor(asfInfo,atomType,theta,lambda_)
-        asf = asf.reshape(asf.shape[0],1)
-        isoB = self.isoDisplacementFactor(theta,atomB,lambda_)
-        sf = np.cos(np.multiply(-2.0*np.pi,(np.multiply(grid[:,[0]],pos[0])+np.multiply(grid[:,[1]],pos[1])+np.multiply(grid[:,[2]],pos[2]))))
-        sf = np.multiply(asf,sf,casting='same_kind')
-        sf = np.multiply(isoB,sf,casting="same_kind")
+        atomB =atom[5]
+        atomOcc = atom[4]
+        #sf = np.cos(np.multiply(-2.0*np.pi,(np.multiply(grid[:,[0]],pos[0])+np.multiply(grid[:,[1]],pos[1])+np.multiply(grid[:,[2]],pos[2]))))
+        sf = np.exp(np.multiply(-2.0j*np.pi,(np.multiply(grid[:,[0]],pos[0])+np.multiply(grid[:,[1]],pos[1])+np.multiply(grid[:,[2]],pos[2]))))
+
+        if FormFactor == True:
+            asf = self.calculateAtomicScatteringFactor(asfInfo,atomType,theta,lambda_)
+            asf = asf.reshape(asf.shape[0],1)
+
+            sf = np.multiply(asf,sf,casting='same_kind')
+
+        if TempFactor == True:
+            isoB = self.isoDisplacementFactor(theta,atomB,lambda_)
+
+            sf = np.multiply(isoB,sf,casting="same_kind")
+
+        #sf = np.multiply(sf,atomOcc)
         return sf
 
     def calculateAtomicScatteringFactor(self,file_,element,theta,lambda_):
@@ -405,7 +438,7 @@ class CrystoGen:
         expo = -np.outer(params[:,[1]],expo).T
         f = np.exp(expo).dot(params[:,[0]])
         f = f + c
-
+       
         return f
 
     def isoDisplacementFactor(self,theta,atomB,lambda_):
@@ -414,6 +447,7 @@ class CrystoGen:
     
     def LPCorrection(self,theta):
         rad = np.pi/180.0
+        #LP = np.divide(1.0+np.power(np.cos(theta*rad),2.0),2.0*np.sin(theta*rad))
         return np.divide((1+np.cos(2*rad*theta)**2),np.multiply(np.cos(theta*rad),np.sin(theta*rad)**2))
 
     def convertToPosition(self,positionTable,a,b,c,alpha,beta,gamma):
@@ -428,52 +462,88 @@ class CrystoGen:
 
         return out
 
-    def calculatePowderPattern(self,grid,ff,_2thetalim,incr,a,b,c,alpha,beta,gamma,cT,LP,U,V,W,Ig,Eta0,X,width):
-        
-        sf = np.append(grid,ff,axis=1)
-        # sf = h,k,l,F
-        #Create Empty pattern
-        pattern = np.zeros((int(_2thetalim/incr),1))
-        patternNoShape = np.zeros((int(_2thetalim/incr),1))
+    def generateHKLGrid(self,boundaries):
+        hShape = boundaries[0]
+        kShape = boundaries[1]
+        lShape = boundaries[2]
 
-        #Convert hkl into d spacing
-        #d = convertHKL2D(sf[:,[0]],sf[:,[1]],sf[:,[2]],a,b,c,alpha,beta,gamma,cT).real
-        #Calculate 2theta from d spacing
-        d,_2theta= self.quadraticBragg(sf[:,[0]],sf[:,[1]],sf[:,[2]],a,b,c,alpha,beta,gamma,cT,0.4)
-        _2theta = _2theta.real*2.0 
-        _2theta = np.nan_to_num(_2theta)
-        test = np.arange(-10,10,0.01)
-        print(test)
-        out = self.psPseudoVoigt(0,test,self.psH(U,V,W,Ig,test),Eta0)
-        plt.plot(test,out)
-        plt.show()
+        h = np.arange(hShape[0],hShape[1])
+        k = np.arange(kShape[0],kShape[1])
+        l = np.arange(lShape[0],lShape[1])
+        #Generate all combinations of hkl
+        return np.array(np.meshgrid(h,k,l)).T.reshape(h.shape[0]*k.shape[0]*l.shape[0],3,order="C")
+
+    def calculatePowderPattern(self,_2thetalim,incr,U,V,W,Ig,Eta0,X,width,ScaleFactor):
+        
+        sf = np.append(self.grid,self.sf.reshape(self.sf.shape[0]*self.sf.shape[1]*self.sf.shape[2],1),axis=1)
+        # sf = h,k,l,F
+        #Empty Pattern arrays 
+        pattern = np.ones((int(_2thetalim/incr),1))
+        patternNoShape = np.ones((int(_2thetalim/incr),1))
+
+        d = self.d
+        _2theta= self.theta
+        _2theta = _2theta.real*2.0
+        sf = np.append(sf,_2theta,axis=1)
+
         #Convert width from 2theta to positions in array
         widthPat = int(width/incr)
-        #APPENDING COMPLEX NUMBERS TO ARRAY MAKES EVERYTHING COMPLEX
+        count = 0
         for i in range(0,_2theta.shape[0]): #_2theta.shape[0]
-            pos = int(np.round(_2theta[i].real/incr))
 
-            patternBoundaryMin = pos-widthPat
-            patternBoundaryMax = pos+widthPat
+            #Locate position (item number) of 2theta in pattern array
+            pos = int(np.round(_2theta[i][0]/incr))
+     
+            if pos < pattern.shape[0]:
+                _2thetaZero = _2theta[i][0]
+                #max min pattern values for all 2theta values between width
+                patternBoundaryMin = pos-widthPat
+                patternBoundaryMax = pos+widthPat
+            
+                _2thetaMin = _2thetaZero-width
+                _2thetaMax = _2thetaZero+width
 
-            _2thetaSelection = np.linspace(_2theta[i][0]-width,_2theta[i][0]+width,patternBoundaryMax-patternBoundaryMin)
-            _2thetaSelection = _2thetaSelection.reshape(_2thetaSelection.shape[0],1)
-            #print(pattern[patternBoundaryMin:patternBoundaryMax].shape,pos,patternBoundaryMin,patternBoundaryMax,_2theta[i],np.amin(_2thetaSelection),np.amax(_2thetaSelection),pattern[patternBoundaryMin:patternBoundaryMax].shape[0] )
-            pattern[patternBoundaryMin:patternBoundaryMax] = pattern[patternBoundaryMin:patternBoundaryMax] + np.multiply((sf[i,[3]][0].real),self.psPseudoVoigt(_2theta[i][0],_2thetaSelection,self.psH(U,V,W,Ig,_2thetaSelection),Eta0))[:pattern[patternBoundaryMin:patternBoundaryMax].shape[0]]
-            #print("PAT",_2theta[i],_2thetaSelection,patternBoundaryMax,patternBoundaryMin)
+                _2thetaSelection = np.linspace(_2thetaMin,_2thetaMax,patternBoundaryMax-patternBoundaryMin)
+         
+                _2thetaSelection = _2thetaSelection.reshape(_2thetaSelection.shape[0],1)
+                H = self.psH(U,V,W,Ig,_2thetaZero)
+                
+                ps =  self.psPseudoVoigt(_2thetaZero,_2thetaSelection,H,Eta0)
+                newInt = np.multiply((sf[i,[3]][0].real),ps)
+                patternNoShape[pos] = patternNoShape[pos] + sf[i,[3]][0].real
+                if patternBoundaryMin <0:
+                    newInt = newInt[np.abs(patternBoundaryMin):]
+                    patternBoundaryMin = 0
 
-            patternNoShape[pos] = patternNoShape[pos] + (sf[i,[3]][0].real)
+                if patternBoundaryMax > pattern.shape[0]:
+                    patternBoundaryMax = pattern.shape[0]
+                    newInt = newInt[0:int(patternBoundaryMax-patternBoundaryMin)]
 
-        #self.writeHKL(sf,d,_2theta,LP)
+                if pattern[patternBoundaryMin:patternBoundaryMax].shape[0] != 0 or pattern.shape[0]>patternBoundaryMin:
+                    pattern[patternBoundaryMin:patternBoundaryMax] = np.add(pattern[patternBoundaryMin:patternBoundaryMax], newInt)
+
+        pattern = pattern/np.amax(pattern)
+        pattern = np.multiply(pattern,ScaleFactor)
 
         _2thetaAxis = np.arange(0,_2thetalim,incr)
-        self.writePowderPlot(_2thetaAxis,pattern)
-        plt.plot(_2thetaAxis,pattern,"r")
-        #plt.plot(_2thetaAxis,patternNoShape)
-        plt.show()
 
+        _2thetaAxisRe = _2thetaAxis.reshape(_2thetaAxis.shape[0],1)[30:]
+        LP_ = self.LPCorrection(_2thetaAxisRe/2.0)
+
+        #LP_[np.argmax(LP_)] = 0.0
+        #LP_[:500] = 1.0
+        pattern = np.multiply(LP_,pattern[30:])
+        #self.writePowderPlot(_2thetaAxis[30:3000],pattern[30:3000])
+        #plt.plot(_2thetaAxis[:3000],pattern[:3000],"r")
+        #plt.plot(_2thetaAxis[:3000],patternNoShape[:3000])
+        #plt.xlabel("2theta")
+        #plt.ylabel("Intensity (Normalised)")
+        #plt.show()
+        return pattern[:3000]
+
+        
     def psGaussian(self,x,H):
-        a = (2.0/H)*(np.log(2.0)/np.pi)**0.5
+        a = (1.0/H)*(4.0*np.log(2.0)/np.pi)**0.5
         b = (4*np.log(2.0))/(H**2.0)
         return np.multiply(a,np.exp(np.multiply(-b,np.power(x,2.0))))
 
@@ -486,13 +556,15 @@ class CrystoGen:
         return Eta0+np.mulitply(X,_2theta)
 
     def psH(self,U,V,W,Ig,_2theta):
-        theta = np.divide(_2theta,2.0)
+        #theta = np.divide(_2theta,2.0)
+        theta = _2theta
         rad = np.pi/180.0
+        #+np.divide(Ig,(np.power(np.cos(theta*rad),2.0)))
         return np.power(np.multiply(U,np.power(np.tan(theta*rad),2.0))+np.multiply(V,np.tan(rad*theta))+W+np.divide(Ig,(np.power(np.cos(theta*rad),2.0))),0.5)
-
+        
     def psPseudoVoigt(self,_2theta0,_2theta,H,Eta):
         theta = _2theta-_2theta0
-        return np.multiply(Eta,self.psLorentz(theta,H))+np.multiply((1-Eta),self.psGaussian(theta,H))
+        return np.add(np.multiply(Eta,self.psLorentz(theta,H)),np.multiply((1-Eta),self.psGaussian(theta,H)))
     def SFtoStruct(self,sf):
         sf = np.fft.fftshift(sf)
         sf = np.fft.fftn(sf).real1
@@ -526,35 +598,48 @@ class CrystoGen:
                         out.write("\n")
                 out.write("\n")
 
-    def writeHKL(self,grid,ff,d,theta,LP):
-
+    def writeHKL(self):
+        print(self.grid.shape)
+        print(self.sf.shape)
+        sf = self.sf.reshape(self.sf.shape[0]*self.sf.shape[1]*self.sf.shape[2],1)
+        sfComplex = self.sfComplex.reshape(self.sfComplex.shape[0]*self.sfComplex.shape[1]*self.sfComplex.shape[2],1)
+        print(self.sfComplex.shape)
+        #print(self.LP.shape)
         out = open("out.hkl","w")
-        out.write("#  h    k    l     |F|        d       2theta       LP   \n")
-        for i in range(0,grid.shape[0]):
-            out.write("  "+str('{:3d}'.format(int(grid[i][0])))+"  "+str('{:3d}'.format(int(grid[i][1])))+"  "+str('{:3d}'.format(int(grid[i][2])))+"  "+str('{:06f}'.format(ff[i][0].real))+"  "+str('{:06f}'.format(d[i][0]))+"  "+str('{:06f}'.format(theta[i][0]))+"  "+str('{:06f}'.format(LP[i][0]))+"\n")
+        out.write("#  h    k    l     F()     F(imag)     |F|        d       2theta       LP   \n")
+        for i in range(0,self.grid.shape[0]):
+            out.write("  "+str('{:3d}'.format(int(self.grid[i][0])))+"  "+str('{:3d}'.format(int(self.grid[i][1])))+"  "+str('{:3d}'.format(int(self.grid[i][2]))))
+            out.write("  "+str('{:06f}'.format(sfComplex[i][0].real)))
+            out.write("  "+str('{:06f}'.format(sfComplex[i][0].imag)))
+            out.write("  "+str('{:06f}'.format((sf[i][0].real))))
+            out.write("  "+str('{:06f}'.format(self.d[i][0]))+"  "+str('{:06f}'.format(self.theta[i][0]*2.0))+"  "+str('{:06f}'.format(self.LP[i][0]))+"\n")
 
-    def genrateTrainingData(num,funcParams):
+def genrateTrainingData(num,funcParams):
 
-        dataFeat = []
-        dataLabel = []
+    dataFeat = []
+    dataLabel = []
 
-        for i in range(0,num):
-            if i % 100 == 0:
-                print(i)
-            item = buildSF3D(*funcParams,True)
-            dataFeat.append(item[0])
-            dataLabel.append(np.array([item[1],item[2],item[3],item[4],item[5],item[6],item[7]]))
+    for i in range(0,num):
+        if i % 100 == 0:
+            print(i)
+        cell = CrystoGen()
 
-        dataFeat = np.array(dataFeat)
-        dataLabel = np.array(dataLabel)
+          
+        dataFeat.append(cell.pattern)
+        dataLabel.append(np.array([cell.a,cell.b,cell.c,cell.alpha,cell.beta,cell.gamma,cell.sg,cell.cT]))
 
-        np.save("feat.npy",dataFeat)
-        np.save("label.npy",dataLabel)
+    dataFeat = np.array(dataFeat)
+    dataLabel = np.array(dataLabel)
+    print(dataFeat.shape)
+    print(dataLabel.shape)
+    np.save("feat.npy",dataFeat)
+    np.save("label.npy",dataLabel)
 
 
-
-
-cell = CrystoGen(CrystalSystem=6,SpaceGroup=200,Info=True)
+#at = [['181', '0.0', '0.0', '0.0', '1.0','1.0'],['181', '-0.5', '-0.5', '0.0', '1.0','1.0'],['116','0.0','0.0','0.25','1.0','1.0'],['116','-0.209','-0.295','0.0','1.0','1.0'],['10','0.073','0.474','0.218','1.0','1.0'],['10','0.073','0.474','0.218','1.0','1.0']]
+#cell = CrystoGen(Info=True)
+#cell = CrystoGen(AtomTable=at,Info=True)
+genrateTrainingData(100000,"")
 
 #dd,s,a,b,c,alpha,beta,gamma = buildSF3D([-10,10],[-10,10],[-10,10],sgInfo,asfInfo)
 #self.writeGRD(dd.shape,dd,"density",a,b,c,alpha,beta,gamma,Setting=0)

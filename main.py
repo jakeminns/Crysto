@@ -173,6 +173,7 @@ def buildAndApplySymmetryOpperations(positions, symmetryOpp):
             tempPos.append(applyOpperation(positions[pos],symmetryOpp[sym][0]))
             tempPos.append(applyOpperation(positions[pos],symmetryOpp[sym][1]))
             tempPos.append(applyOpperation(positions[pos],symmetryOpp[sym][2]))
+            tempPos.append(positions[pos][4])
             NewPositions.append(tempPos)
     return NewPositions
 
@@ -418,42 +419,34 @@ def quadraticBragg(h,k,l,a,b,c,alpha,beta,gamma,cT,lambda_):
         cosGS = (np.cos(alpha*rad)*np.cos(beta*rad)-np.cos(gamma*rad))/(np.sin(rad*alpha)*np.sin(rad*beta))
 
         const = (lambda_**2.0)/(4.0)
-        hkl = np.multiply(np.power(h,2,0),aS**2.0)+np.multiply(np.power(k,2,0),bS**2.0)+np.multiply(np.power(l,2,0),cS**2.0)+(2.0*np.multiply(k,l)*bS*cS*cosAS)+(2.0*np.multiply(l,h)*cS*aS*cosBS)+(2.0*np.multiply(l,h)*cS*aS*cosBS)+(2.0*np.multiply(h,k)*aS*bS*cosGS)
-        _2t = np.multiply(const,hkl)
-        _2t = np.arcsin(np.power(_2t,0.5))
+        print(V,aS,bS,cS,cosAS,cosBS,cosGS,const)
+        hkl = np.multiply(np.power(h,2.0),aS**2.0)+np.multiply(np.power(k,2.0),bS**2.0)+np.multiply(np.power(l,2.0),cS**2.0)+(2.0*np.multiply(k,l)*bS*cS*cosAS)+(2.0*np.multiply(l,h)*cS*aS*cosBS)+(2.0*np.multiply(l,h)*cS*aS*cosBS)+(2.0*np.multiply(h,k)*aS*bS*cosGS)
+        #_2t = np.multiply(const,hkl)
+        #_2t = np.arcsin(np.power(_2t,0.5))
 
     elif cT==1:
         const = (lambda_**2.0)/(4.0)
-        print("aaaa",a,b,c,beta,a*b*c*(1+2*np.cos(rad*alpha)*np.cos(rad*beta)*np.cos(rad*gamma)-(np.cos(alpha*rad)**2.0)-(np.cos(beta*rad)**2.0)-(np.cos(gamma*rad)**2.0))**0.5)
-
         h_ = np.divide(np.power(h,2.0),np.multiply((a**2.0),np.power(np.sin(beta*rad),2.0)))
-        print("h",h_)
         k_ = np.divide(np.power(k,2.0),b**2.0)
-        print("k",k_)
         l_ = np.divide(np.power(l,2.0),np.multiply((c**2.0),np.power(np.sin(beta*rad),2.0)))
-        print("l",l_)
         a_ = np.divide((2.0*np.multiply(h,l))*np.cos(rad*beta),(a*c*(np.power(np.sin(beta*rad),2.0))))
-        print("a",a_)
         hkl = h_+k_+l_-a_
-        print("hkl",hkl)
-        print("COSNT",const)
-        _2t = np.multiply(const,hkl)
-        print("MUL",_2t)
-        _2t = np.arcsin(np.power(_2t,0.5))
-        print("2t",_2t)
+        #_2t = np.multiply(const,hkl)
+        
+        #_2t = np.arcsin(np.power(_2t,0.5))
     elif cT==2:
         const = (lambda_**2.0)/(4.0)
         hkl = np.divide(np.power(h,2.0),a**2.0)+np.divide(np.power(k,2.0),b**2.0)+np.divide(np.power(l,2.0),c**2.0)
-        _2t = np.multiply(const,hkl)
-        _2t = np.arcsin(np.power(_2t,0.5))
+        #_2t = np.multiply(const,hkl)
+        #_2t = np.arcsin(np.power(_2t,0.5))
     elif cT==3:
 
         const = (lambda_**2.0)/(4.0)
         const2 = 1.0/(a**2.0)
         hkl = (np.power(h,2.0)+np.power(k,2.0)+(np.multiply((a/c)**2.0,np.power(l,2.0))))
         hkl = np.multiply(const2,hkl)
-        _2t = np.multiply(const,hkl)
-        _2t = np.arcsin(np.power(_2t,0.5))
+        #_2t = np.multiply(const,hkl)
+        #_2t = np.arcsin(np.power(_2t,0.5))
 
     elif cT==4 or cT==5:
 
@@ -461,8 +454,8 @@ def quadraticBragg(h,k,l,a,b,c,alpha,beta,gamma,cT,lambda_):
         const2 = 1.0/(a**2.0)
         hkl = np.multiply((4.0/3.0),(np.power(h,2.0)+np.power(k,2.0)+np.multiply(h,k)))+(np.multiply((a/c)**2.0,np.power(l,2.0)))
         hkl = np.multiply(const2,hkl)
-        _2t = np.multiply(const,hkl)
-        _2t = np.arcsin(np.power(_2t,0.5))
+        #_2t = np.multiply(const,hkl)
+        #_2t = np.arcsin(np.power(_2t,0.5))
 
     elif cT==9:
         const = (lambda_**2.0)/(4.0)
@@ -472,8 +465,8 @@ def quadraticBragg(h,k,l,a,b,c,alpha,beta,gamma,cT,lambda_):
         hklTop = np.multiply(hkl,np.sin(rad*gamma)**2.0)+np.multiply((2.0*hkl2),(np.cos(gamma*rad)**2.0))-np.cos(gamma*rad)
         hklBot = (a**2.0)*(1-(3*np.cos(rad*gamma)**2.0)+(2.0*np.cos(gamma*rad)**3.0))
         hkl = np.divide(hklTop,hklBot)
-        _2t = np.multiply(const,hkl)
-        _2t = np.arcsin(np.power(_2t,0.5))
+        #_2t = np.multiply(const,hkl)
+        #_2t = np.arcsin(np.power(_2t,0.5))
 
 
     elif cT==6:
@@ -483,16 +476,18 @@ def quadraticBragg(h,k,l,a,b,c,alpha,beta,gamma,cT,lambda_):
         hkl = (np.power(h,2.0)+np.power(k,2.0)+np.power(l,2.0))
         hkl = np.multiply(const2,hkl)
 
-        _2t = np.multiply(const,hkl)
-        _2t = np.arcsin(np.power(_2t,0.5))
+        #_2t = np.multiply(const,hkl)
+        #_2t = np.arcsin(np.power(_2t,0.5))
 
     else:
         print("Incorrect Cell Type Chosen")
         sys.exit()  
+    d = np.power(np.divide(1.0,hkl),0.5)
+
     for i in range(0,100):
-        print(h[i],k[i],l[i], np.power(np.divide(1.0,hkl[i]),0.5),np.power(np.multiply(const,hkl[i]),0.5),_2t[i]) 
+        print(h[i],k[i],l[i], d[i],(180.0/np.pi)*np.divide(lambda_,np.multiply(2.0,d[i])))
 #np.power(np.divide(1.0,hkl),0.5)
-    return np.power(np.divide(1.0,hkl),0.5),(180.0/np.pi)*_2t
+    return d,(180.0/np.pi)*np.divide(lambda_,np.multiply(2.0,d))
 
 def convertHKL2D(h,k,l,a,b,c,alpha,beta,gamma,cT):
 
@@ -541,24 +536,24 @@ def d2theta(d,lambd):
 def buildSF3D(hShape,kShape,lShape,sgInfo,asfInfo):
 
     lambda_ = 0.4
-    a,b,c,alpha,beta,gamma,sg,cT = randomCell(A=22.59827208128997,B= 22.59827208128997,C= 12.59827208128997,Alpha= 90.0,Beta= 90.0,Gamma= 120.0,sG= 150)
+   #a,b,c,alpha,beta,gamma,sg,cT = randomCell(A=1.5814,B= 16.9829,C= 9.166782,Alpha= 90.0,Beta= 90.0,Gamma= 90.0,sG= 28)
     #Generaate lattice parameters and space group
-    #a,b,c,alpha,beta,gamma,sg,cT = randomCell(sG=170)
+    a,b,c,alpha,beta,gamma,sg,cT = randomCell(sG=1)
     #Initilise postion table
     positionTable = []
     #for a random amount of atom assign a random position
     for atom in range(0,np.random.randint(1,4)):
-        positionTable.append(["10",str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0])])
+        positionTable.append(["10",str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0]),str(np.random.random_sample(1)[0]),"1.0"])
     #positionTable = [["10","0.0","0.0","0.0"],["10","0.123","0.321","0.231"]]
     #positionTable = [["10","0.0","0.0","0.0"]]
-    positionTable = [['10', '0.17421616359686776', '0.009086319277717747', '0.616727098909161']]
-    print("params",a,b,c,alpha,beta,gamma,sg,cT)
+    positionTable = [['10', '0.17421616359686776', '0.009086319277717747', '0.616727098909161',"1.0"]]
     print("pos",positionTable)
     #build a list of symmetry operators and centering operations  
     sym = sgInfo[sg][3:][0]
     cen = sgInfo[sg][4:][0]
     laue = sgInfo[sg][2][0]
     name = sgInfo[sg][1][0]
+    print("params",a,b,c,alpha,beta,gamma,sg,cT,name)
 
     centMulti = [['x','y','z'],['x+1','y+1','z+1'],['x+1','y+1','z'],['x+1','y','z+1'],['x+1','y','z'],['x','y+1','z+1'],['x','y+1','z'],['x','y','z+1']]
     #Apply symmetry operations
@@ -569,9 +564,11 @@ def buildSF3D(hShape,kShape,lShape,sgInfo,asfInfo):
     #Apply centering operations
     positionTable = np.array(positionTable,dtype=np.dtype(float))
     atomType = positionTable[:,[0]]
+    atomISO = positionTable[:,[4]]
     positionTable = positionTable[:,[1,2,3]]%1
 
     positionTable = np.append(atomType,positionTable,axis=1)
+    positionTable = np.append(positionTable,atomISO,axis=1)
     #Find absolute
     positionTable = np.abs(positionTable)
     #Round results for removal of duplicates
@@ -589,6 +586,7 @@ def buildSF3D(hShape,kShape,lShape,sgInfo,asfInfo):
     print(grid)
     d,theta = quadraticBragg(grid[:,[0]],grid[:,[1]],grid[:,[2]],a,b,c,alpha,beta,gamma,cT,lambda_)
     print("here",theta)
+    #theta = np.nan_to_num(theta)
     #Apply calcSF across axis for all hkl's calculating all contributions of atoms for each hkl
     ff = np.apply_along_axis(calcSF,1,positionTable,*[grid,atomType,theta,asfInfo,lambda_])
     #Sum for all atoms
@@ -602,7 +600,7 @@ def buildSF3D(hShape,kShape,lShape,sgInfo,asfInfo):
     
     ff= np.abs(ff.real)
     ff = ff/np.amax(ff)
-    writeHKL(grid,ff,d,theta,LP)
+    writeHKL(grid,ff,d,theta*2.0,LP)
     calculatePowderPattern(grid,ff,180.0,0.01,a,b,c,alpha,beta,gamma,cT,LP)
 
     #Reshape for grid
@@ -626,7 +624,7 @@ def calculatePowderPattern(grid,ff,_2thetalim,incr,a,b,c,alpha,beta,gamma,cT,LP)
     #Calculate 2theta from d spacing
     d,_2theta= quadraticBragg(sf[:,[0]],sf[:,[1]],sf[:,[2]],a,b,c,alpha,beta,gamma,cT,0.4)
     _2theta = _2theta.real*2.0 
-    #_2theta = np.nan_to_num(_2theta)
+    _2theta = np.nan_to_num(_2theta)
     #APPENDING COMPLEX NUMBERS TO ARRAY MAKES EVERYTHING COMPLEX
     for i in range(0,_2theta.shape[0]):
         pos = int(np.round(_2theta[i].real/incr))
@@ -673,16 +671,22 @@ def LPCorrection(theta):
 def calcSF(atom,grid,atomType,theta,asfInfo,lambda_):
     #VFunc = np.vectorize(SF)
     atomType = int(atom[0])
-    pos = atom[1:]
-
+    pos = atom[1:4]
+    atomB =atom[4]
+    print("ATOM",atomType,pos,atomB)
     asf = calculateAtomicScatteringFactor(asfInfo,atomType,theta,lambda_)
     asf = asf.reshape(asf.shape[0],1)
-    
+    isoB = isoDisplacementFactor(theta,atomB,lambda_)
     t1 = np.cos(np.multiply(-2.0*np.pi,(np.multiply(grid[:,[0]],pos[0])+np.multiply(grid[:,[1]],pos[1])+np.multiply(grid[:,[2]],pos[2]))))
-
+    print("iSo",isoB)
     t1 = np.multiply(asf,t1,casting='same_kind')
-
+    t1 = np.multiply(isoB,t1,casting="same_kind")
     return t1
+
+
+def isoDisplacementFactor(theta,atomB,lambda_):
+    rad = np.pi/180.0
+    return np.exp(np.multiply(-atomB,(np.divide(np.power(np.sin(theta*rad),2.0),np.power(lambda_,2.0)))))
 
 def genrateTrainingData(num,funcParams):
 

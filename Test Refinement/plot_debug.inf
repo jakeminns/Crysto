@@ -1,0 +1,59 @@
+    -----------------------------------------------------------------
+    Debug symmetry constraints on PCR-file: plot.pcr
+    -----------------------------------------------------------------
+
+
+    Space Group        of phase:    1    I 4/m               
+    Space Group number of phase:    1 ->  87
+    Hall Symbol of Space Group : -I 4            
+    Maximum_Lcode before CELL_const:    8
+ => Positions of VARY and FIX:   0  0  data_Diffuse_300K_Full_Sphere_Scan
+ => data_Diffuse_300K_Full_Sphere_Scan  0 <-- Position of xyz
+ => data_Diffuse_300K_Full_Sphere_Scan  0 <-- Position of mxmymz
+    Multiplier for    xyz:   0.0000
+    Multiplier for      b:   0.0000
+    Multiplier for mxmymz:   0.0000
+    Maximum_Lcode  after CELL_const:    8
+
+ => Atom Position:   0.00000   0.00000   0.00000
+ => List of symmetry element of the stabilizer without identity:
+     Operator  2:  -y,x,z                             4+ 0,0,z                             ssymb:  0    0    c  
+     Operator  3:  -x,-y,z                            2 0,0,z                              ssymb:  0    0    c  
+     Operator  4:  y,-x,z                             4- 0,0,z                             ssymb:  0    0    c  
+     Operator  5:  -x,-y,-z                           -1 0,0,0                             ssymb:  0    0    0  
+     Operator  6:  y,-x,-z                            -4+ 0,0,z; 0,0,0                     ssymb:  0    0    0  
+     Operator  7:  x,y,-z                             m x,y,0                              ssymb:  0    0    0  
+     Operator  8:  -y,x,-z                            -4- 0,0,z; 0,0,0                     ssymb:  0    0    0  
+     Codes positions:     0.0000    0.0000    0.0000
+     Codes   string : (   0  0  0 )
+
+ => Atom Position:   0.50000   0.50000   0.00000
+ => List of symmetry element of the stabilizer without identity:
+     Operator  2:  x,y,-z                             m x,y,0                              ssymb:  a    b    0  
+     Operator  3:  y,-x+1,z                           4- 1/2,1/2,z                         ssymb:  0    0    0  
+     Operator  4:  y,-x+1,-z                          -4+ 1/2,1/2,z; 1/2,1/2,0             ssymb:  0    0    0  
+     Operator  5:  -y+1,x,z                           4+ 1/2,1/2,z                         ssymb:  0    0    0  
+     Operator  6:  -y+1,x,-z                          -4- 1/2,1/2,z; 1/2,1/2,0             ssymb:  0    0    0  
+     Operator  7:  -x+1,-y+1,z                        2 1/2,1/2,z                          ssymb:  0    0    0  
+     Operator  8:  -x+1,-y+1,-z                       -1 1/2,1/2,0                         ssymb:  0    0    0  
+     Codes positions:     0.0000    0.0000    0.0000
+     Codes   string : (   0  0  0 )
+
+ => Atom Position:   0.79100   0.70500   0.00000
+ => List of symmetry element of the stabilizer without identity:
+     Operator  2:  x,y,-z                             m x,y,0                              ssymb:  a    b    0  
+     Codes positions:     0.0000    0.0000    0.0000
+     Codes   string : (   a  b  0 )
+
+ => Atom Position:   0.00000   0.00000   0.25280
+ => List of symmetry element of the stabilizer without identity:
+     Operator  2:  -y,x,z                             4+ 0,0,z                             ssymb:  0    0    c  
+     Operator  3:  -x,-y,z                            2 0,0,z                              ssymb:  0    0    c  
+     Operator  4:  y,-x,z                             4- 0,0,z                             ssymb:  0    0    c  
+     Codes positions:     0.0000    0.0000    0.0000
+     Codes   string : (   0  0  c )
+
+ => Atom Position:   0.07300   0.47400   0.21800
+     Codes positions:     0.0000    0.0000    0.0000
+     Codes   string : (   a  b  c )
+    Maximum_Lcode after Get_atompos_ctr/get_atombet_ctr:    8
