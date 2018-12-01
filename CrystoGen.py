@@ -400,7 +400,6 @@ class CrystoGen:
             sys.exit()  
         
         d = np.power(np.divide(1.0,hkl),0.5)
-
         return d,(180.0/np.pi)*np.divide(lambda_,np.multiply(2.0,d))
 
     def calcSF(self,atom,grid,atomType,theta,asfInfo,lambda_,FormFactor,TempFactor):
@@ -492,7 +491,30 @@ class CrystoGen:
         for i in range(0,_2theta.shape[0]): #_2theta.shape[0]
 
             #Locate position (item number) of 2theta in pattern array
-            pos = int(np.round(_2theta[i][0]/incr))
+            pos = np.round(_2theta[i][0]/incr)
+            pos = np.nan_to_num(pos)
+            try:
+                pos = int(pos)
+            except:
+                print("========== Crystal Info ==========")
+                print("")
+                print("a:",self.a)
+                print("b:",self.b)
+                print("c:",self.c)
+                print("Alpha:",self.alpha)
+                print("Beta:",self.beta)
+                print("Gamma:",self.gamma)
+                print("Space Group No.:", self.sg+1, "Laue Class:",self.sgInfo[self.sg][2][0],"Space Group:",self.sgInfo[self.sg][1][0])   
+                print("")
+                print("-------- Atom Table --------")
+
+                for atom in self.atomTable:
+                    print(atom)
+                print("")
+                print("=================================")
+                print("Failed on position convert float to int")
+                sys.exit()
+
      
             if pos < pattern.shape[0]:
                 _2thetaZero = _2theta[i][0]
@@ -637,7 +659,7 @@ def genrateTrainingData(num,funcParams):
 
 
 #at = [['181', '0.0', '0.0', '0.0', '1.0','1.0'],['181', '-0.5', '-0.5', '0.0', '1.0','1.0'],['116','0.0','0.0','0.25','1.0','1.0'],['116','-0.209','-0.295','0.0','1.0','1.0'],['10','0.073','0.474','0.218','1.0','1.0'],['10','0.073','0.474','0.218','1.0','1.0']]
-#cell = CrystoGen(Info=True)
+#cell = CrystoGen(SpaceGroup=1, Info=True)
 #cell = CrystoGen(AtomTable=at,Info=True)
 genrateTrainingData(100000,"")
 
