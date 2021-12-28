@@ -89,12 +89,12 @@ class Diffraction:
                                         np.multiply(grid[:, [1]], pos[1]) +
                                         np.multiply(grid[:, [2]], pos[2]))))
 
-        if FormFactor == True:
+        if FormFactor:
             asf = self.calculate_atomic_scattering_factor(int(atom[0]), theta)
             asf = asf.reshape(asf.shape[0], 1)
             sf = np.multiply(asf, sf, casting='same_kind')
 
-        if TempFactor == True:
+        if TempFactor:
             isoB = self.iso_displacement_factor(theta, atom[5])
             sf = np.multiply(isoB, sf, casting="same_kind")
 
@@ -107,12 +107,15 @@ class Diffraction:
         rad = np.pi / 180.0
 
         params = params.reshape(4, 2)
+        print(params)
+
         c = self.structure.asfInfo[element][9]
         theta1 = np.sin(theta * rad) / self._lambda
 
         expo = np.power(theta1, 2.0)
         expo = -np.outer(params[:, [1]], expo).T
         f = np.exp(expo).dot(params[:, [0]])
+        print(f)
         f = f + c
 
         return f
