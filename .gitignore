@@ -1,3 +1,14 @@
 *.npy
 *.grd
 *.hkl
+logs/
+*.pklz
+*.ipynb
+*.v2
+*.trace
+logs/*
+*.profile-empty
+__pycache__/
+*.py[cod]
+
+
