@@ -1,7 +1,4 @@
 import numpy as np
-import decimal
-from structure import *
-from _structures import *
 
 
 class Diffraction:
@@ -13,7 +10,7 @@ class Diffraction:
     """
 
     def __init__(self,
-                 structure,
+                 structure=None,
                  ReciprocalGen=[[-15, 15], [-15, 15], [-15, 15]],
                  _lambda=0.4):
 
@@ -24,10 +21,10 @@ class Diffraction:
         self._k = np.sum(np.abs(ReciprocalGen[1]))
         self._l = np.sum(np.abs(ReciprocalGen[2]))
 
-        self.structure = structure
-
-        self.sf, self.sfComplex, self.grid, self.d, self.theta = self.build_sf_3d(
-        )
+        if structure is not None:
+            self.structure = structure
+            self.sf, self.sfComplex, self.grid, self.d, self.theta = self.build_sf_3d(
+            )
 
     def build_sf_3d(self,
                     FormFactor=True,
@@ -284,138 +281,3 @@ class Diffraction:
             file_.write(
                 str('{:06f}'.format(theta)) + "   " +
                 str('{:06f}'.format(int_[0])) + "\n")
-
-    def writeGRD(self,
-                 fdat,
-                 data,
-                 name,
-                 a,
-                 b,
-                 c,
-                 alpha,
-                 beta,
-                 gamma,
-                 Setting=0):
-        """Write reciprocal grid to file"""
-        out = open(name + ".grd", "w")
-        out.write("Title: Put your title \n")
-        if Setting == 0:
-            out.write(" " + str(fdat[0]) + "  " + str(fdat[1]) + "  " +
-                      str(fdat[2]) + "  " + str(90) + "  " + str(90) + "  " +
-                      str(90) + "\n")
-        else:
-            out.write(" " + str(a) + "  " + str(b) + "  " + str(c) + "  " +
-                      str(alpha) + "  " + str(beta) + "  " + str(gamma) + "\n")
-
-        cell = np.array(fdat) / 10.0
-
-        out.write("   " + str(fdat[0]) + "    " + str(fdat[1]) + "   " +
-                  str(fdat[2]) + " \n")
-
-        for x in range(0, (fdat[0])):
-            for y in range(0, (fdat[1])):
-                for z in range(0, (fdat[2])):
-                    out.write('%.6E' % decimal.Decimal(data[x][y][z]) + "   ")
-                    if z % 6 == 0:
-                        out.write("\n")
-                out.write("\n")
-
-
-import pandas as pd
-import zlib
-import pickle
-
-
-def pickle_file(input_object):
-    return pickle.dumps(input_object, protocol=-1)
-
-
-def decompress(obj):
-    return pickle.loads(zlib.decompress(obj))
-
-
-def compress(input_object):
-    return zlib.compress(pickle.dumps(input_object), level=1)
-
-
-def genrateTrainingData(size):
-
-    from tqdm import tqdm
-
-    for num in range(8, 15):
-        dataFeat = []
-        dataLabel = []
-        for i in tqdm(range(0, size)):
-
-            for ct in [
-                    Cubic, Monoclinic, Orthorhombic, Tetragonal, Trigonal,
-                    Hexagonal
-            ]:
-                if i % 100 == 0:
-                    print(i)
-
-                cell = Struct().create(ct())
-                pattern = Diffraction(cell)
-                _theta, pattern = pattern.calculate_powder_pattern(180.0,
-                                                                   0.01,
-                                                                   0.1,
-                                                                   -0.0001,
-                                                                   0.0001,
-                                                                   0.001,
-                                                                   0.5,
-                                                                   0.001,
-                                                                   8.0,
-                                                                   1.0,
-                                                                   plot=False)
-
-                dataFeat.append(pattern.reshape(-1))
-                dataLabel.append(
-                    np.array([
-                        cell.a, cell.b, cell.c, cell.alpha, cell.beta,
-                        cell.gamma, cell.sg, cell.cT,
-                        len(cell.atomTable)
-                    ]))
-
-        dataFeat = np.array(dataFeat)
-        dataLabel = np.array(dataLabel)
-
-        print(dataFeat.shape)
-        print(dataLabel.shape)
-
-        df_feat = pd.DataFrame(dataFeat, columns=_theta)
-        obj = compress(df_feat)
-
-        with open('feat_new_{}.pklz'.format(str(num)), 'wb') as f:
-            f.write(obj)
-
-        df_labels = pd.DataFrame(dataLabel,
-                                 columns=[
-                                     'a', 'b', 'c', 'alpha', 'beta', 'gamma',
-                                     'sg', 'cT', 'atoms'
-                                 ])
-        obj = compress(df_labels)
-
-        with open('labels_new_{}.pklz'.format(str(num)), 'wb') as f:
-            f.write(obj)
-
-    #np.save("feat.npy",dataFeat)
-    #np.save("label.npy",dataLabel)
-
-
-"""
-##### Random ####
-cell = Struct().create(Cubic())
-pattern = PatternGen(cell)
-pattern = pattern.calculate_powder_pattern(180.0,0.01,0.1,-0.0001,0.0001,0.001,0.5,0.001,8.0,1.0)
-
-
-
-##### Cell #####
-at = [['62', '0.0', '0.0', '0.0', '1.0', '1.0']]
-cell = Struct(random=False).create(Hexagonal(), a=3, c=6, sg=167, atomTable=at)
-pattern = Diffraction(cell)
-pattern = pattern.calculate_powder_pattern(180.0, 0.01, 0.1, -0.0001, 0.0001,
-                                           0.001, 0.5, 0.001, 8.0, 1.0)
-"""
-#### Data Gen ####
-#genrateTrainingData(150)

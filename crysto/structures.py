@@ -1,5 +1,5 @@
 import numpy as np
-from _structure_interface import IStruct
+from ._structure_interface import IStruct
 
 
 class Cubic(IStruct):
