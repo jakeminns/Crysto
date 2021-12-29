@@ -1,23 +1,16 @@
 # Crysto
 
-Generate random crystal structures and respecitve X-ray diffraction patterns.
+This module provides the ability to generate crystal structures, either random or predefined and then simulate the respecitve X-ray powder diffraction pattern with configurable peak shape and instrument parameters.
 
+# Random Structure
 
-# Random Cell
-
-cell = CrystoGen()
+cell = Struct().create(Cubic())
 pattern = PatternGen(cell)
-pattern = pattern.calculatePowderPattern(180.0,0.01,0.1,-0.0001,0.0001,0.001,0.5,0.001,8.0,1.0)
+pattern = pattern.calculate_powder_pattern(180.0,0.01,0.1,-0.0001,0.0001,0.001,0.5,0.001,8.0,1.0)
 
+# Defined Structure
 
-# Specified Cell
-
-at = [['181', '0.0', '0.0', '0.0', '1.0','1.0'],['181', '-0.5', '-0.5', '0.0', '1.0','1.0'],['116','0.0','0.0','0.25','1.0','1.0'],['116','-0.209','-0.295','0.0','1.0','1.0'],['10','0.073','0.474','0.218','1.0','1.0'],['10','0.073','0.474','0.218','1.0','1.0']]
-#cell = CrystoGen(SpaceGroup=1, Info=True)
-cell = CrystoGen(atcomTable=at,info=True)
-pattern = PatternGen(cell)
-pattern = pattern.calculatePowderPattern(180.0,0.01,0.1,-0.0001,0.0001,0.001,0.5,0.001,8.0,1.0)
-
-
-# Batch Data Generate
-genrateTrainingData(1,"")
+at = [['62', '0.0', '0.0', '0.0', '1.0', '1.0']]
+cell = Struct(random=False).create(Tetragonal(), a=6, c=8, sg=78, atomTable=at)
+pattern = Diffraction(cell)
+pattern = pattern.calculate_powder_pattern(180.0, 0.01, 0.1, -0.0001, 00001,0.001, 0.5, 0.001, 8.0, 1.0)
