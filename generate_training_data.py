@@ -75,20 +75,5 @@ def genrateTrainingData(size):
             f.write(obj)
 
 
-"""
-##### Random ####
-cell = Struct().create(Cubic())
-pattern = PatternGen(cell)
-pattern = pattern.calculate_powder_pattern(180.0,0.01,0.1,-0.0001,0.0001,0.001,0.5,0.001,8.0,1.0)
-
-"""
-
-##### Cell #####
-at = [['62', '0.0', '0.0', '0.0', '1.0', '1.0']]
-cell = Struct(random=False).create(Tetragonal(), a=6, c=8, sg=78, atomTable=at)
-pattern = Diffraction(cell)
-pattern = pattern.calculate_powder_pattern(180.0, 0.01, 0.1, -0.0001, 0.0001,
-                                           0.001, 0.5, 0.001, 8.0, 1.0)
-
-#### Data Gen ####
-#genrateTrainingData(150)
+if __name__ == '__main__':
+    genrateTrainingData(150)

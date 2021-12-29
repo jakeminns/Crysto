@@ -107,7 +107,6 @@ class Diffraction:
         rad = np.pi / 180.0
 
         params = params.reshape(4, 2)
-        print(params)
 
         c = self.structure.asfInfo[element][9]
         theta1 = np.sin(theta * rad) / self._lambda
@@ -115,7 +114,6 @@ class Diffraction:
         expo = np.power(theta1, 2.0)
         expo = -np.outer(params[:, [1]], expo).T
         f = np.exp(expo).dot(params[:, [0]])
-        print(f)
         f = f + c
 
         return f
